@@ -19,6 +19,7 @@ import { DEFAULT_ORBITAL_SKINS } from './skinPresets.js';
 import { ACCENT_PRESETS, MENU_BG_PRESETS, openNativeSenpaSettings } from './settings.js';
 import { getMutedPlayers, unmutePlayer } from './chat.js';
 import { setNativeActiveSkin, getNativeActiveSkin } from './skins.js';
+import { spectateTopPlayer } from './leaderboard.js';
 import {
   alignNativeButtons,
   hideNativeButtons,

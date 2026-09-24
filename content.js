@@ -46,13 +46,6 @@ try {
   }
 } catch (e) {}
 
-// 3. Ensure MAIN world bridge script is injected
-try {
-  const scriptEl = document.createElement('script');
-  scriptEl.src = chrome.runtime.getURL('src/injected.js');
-  (document.head || document.documentElement).appendChild(scriptEl);
-} catch (e) {}
-
 async function init() {
   const settings = await getSettings();
 
@@ -115,17 +108,6 @@ async function init() {
     if (skinInput && skinInput.value) setNativeActiveSkin(skinInput.value);
   }
 
-  // Hook native #play and #spectate buttons to ensure inputs are synced before click
-  hookNativeButtonEvents(
-    () => {
-      syncAll();
-    },
-    () => {
-      hideDeltMenu();
-      lifecycle.notifyGameStarted();
-    }
-  );
-
   // Setup Lifecycle watcher
   const lifecycle = setupGameLifecycleWatcher({
     onDeathOrDisconnect: () => {
@@ -142,6 +124,17 @@ async function init() {
       toggleDeltMenu();
     }
   });
+
+  // Hook native #play and #spectate buttons to ensure inputs are synced before click
+  hookNativeButtonEvents(
+    () => {
+      syncAll();
+    },
+    () => {
+      hideDeltMenu();
+      lifecycle.notifyGameStarted();
+    }
+  );
 
   // Keep native menu elements hidden while keeping #play and #spectate aligned
   startNativeMenuWatcher(() => {
