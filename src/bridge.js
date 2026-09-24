@@ -130,38 +130,38 @@ export function alignNativeButtons() {
   if (nativePlay && playTarget) {
     const rect = playTarget.getBoundingClientRect();
     if (rect.width > 0 && rect.height > 0) {
-      nativePlay.style.position = 'fixed';
-      nativePlay.style.left = `${rect.left}px`;
-      nativePlay.style.top = `${rect.top}px`;
-      nativePlay.style.width = `${rect.width}px`;
-      nativePlay.style.height = `${rect.height}px`;
-      nativePlay.style.opacity = '0.001';
-      nativePlay.style.zIndex = '9999999';
-      nativePlay.style.display = 'block';
-      nativePlay.style.visibility = 'visible';
-      nativePlay.style.pointerEvents = 'auto';
-      nativePlay.style.cursor = 'pointer';
-      nativePlay.style.transform = 'none';
-      nativePlay.style.margin = '0';
+      nativePlay.style.setProperty('position', 'fixed', 'important');
+      nativePlay.style.setProperty('left', `${rect.left}px`, 'important');
+      nativePlay.style.setProperty('top', `${rect.top}px`, 'important');
+      nativePlay.style.setProperty('width', `${rect.width}px`, 'important');
+      nativePlay.style.setProperty('height', `${rect.height}px`, 'important');
+      nativePlay.style.setProperty('opacity', '0.001', 'important');
+      nativePlay.style.setProperty('z-index', '2147483640', 'important');
+      nativePlay.style.setProperty('display', 'block', 'important');
+      nativePlay.style.setProperty('visibility', 'visible', 'important');
+      nativePlay.style.setProperty('pointer-events', 'auto', 'important');
+      nativePlay.style.setProperty('cursor', 'pointer', 'important');
+      nativePlay.style.setProperty('transform', 'none', 'important');
+      nativePlay.style.setProperty('margin', '0', 'important');
     }
   }
 
   if (nativeSpectate && spectateTarget) {
     const rect = spectateTarget.getBoundingClientRect();
     if (rect.width > 0 && rect.height > 0) {
-      nativeSpectate.style.position = 'fixed';
-      nativeSpectate.style.left = `${rect.left}px`;
-      nativeSpectate.style.top = `${rect.top}px`;
-      nativeSpectate.style.width = `${rect.width}px`;
-      nativeSpectate.style.height = `${rect.height}px`;
-      nativeSpectate.style.opacity = '0.001';
-      nativeSpectate.style.zIndex = '9999999';
-      nativeSpectate.style.display = 'block';
-      nativeSpectate.style.visibility = 'visible';
-      nativeSpectate.style.pointerEvents = 'auto';
-      nativeSpectate.style.cursor = 'pointer';
-      nativeSpectate.style.transform = 'none';
-      nativeSpectate.style.margin = '0';
+      nativeSpectate.style.setProperty('position', 'fixed', 'important');
+      nativeSpectate.style.setProperty('left', `${rect.left}px`, 'important');
+      nativeSpectate.style.setProperty('top', `${rect.top}px`, 'important');
+      nativeSpectate.style.setProperty('width', `${rect.width}px`, 'important');
+      nativeSpectate.style.setProperty('height', `${rect.height}px`, 'important');
+      nativeSpectate.style.setProperty('opacity', '0.001', 'important');
+      nativeSpectate.style.setProperty('z-index', '2147483640', 'important');
+      nativeSpectate.style.setProperty('display', 'block', 'important');
+      nativeSpectate.style.setProperty('visibility', 'visible', 'important');
+      nativeSpectate.style.setProperty('pointer-events', 'auto', 'important');
+      nativeSpectate.style.setProperty('cursor', 'pointer', 'important');
+      nativeSpectate.style.setProperty('transform', 'none', 'important');
+      nativeSpectate.style.setProperty('margin', '0', 'important');
     }
   }
 }
@@ -172,8 +172,14 @@ export function alignNativeButtons() {
 export function hideNativeButtons() {
   const nativePlay = document.getElementById('play');
   const nativeSpectate = document.getElementById('spectate');
-  if (nativePlay) nativePlay.style.display = 'none';
-  if (nativeSpectate) nativeSpectate.style.display = 'none';
+  if (nativePlay) {
+    nativePlay.style.setProperty('display', 'none', 'important');
+    nativePlay.style.setProperty('pointer-events', 'none', 'important');
+  }
+  if (nativeSpectate) {
+    nativeSpectate.style.setProperty('display', 'none', 'important');
+    nativeSpectate.style.setProperty('pointer-events', 'none', 'important');
+  }
 }
 
 /**
@@ -193,9 +199,7 @@ export function hookNativeButtonEvents(onBeforeSpawn, onSpawnComplete) {
         if (typeof onBeforeSpawn === 'function') onBeforeSpawn();
       });
       nativePlay.addEventListener('click', () => {
-        isGameActive = true;
-        hideNativeButtons();
-        if (typeof onSpawnComplete === 'function') onSpawnComplete();
+        if (typeof onBeforeSpawn === 'function') onBeforeSpawn();
       });
     }
 
@@ -205,9 +209,7 @@ export function hookNativeButtonEvents(onBeforeSpawn, onSpawnComplete) {
         if (typeof onBeforeSpawn === 'function') onBeforeSpawn();
       });
       nativeSpectate.addEventListener('click', () => {
-        isGameActive = true;
-        hideNativeButtons();
-        if (typeof onSpawnComplete === 'function') onSpawnComplete();
+        if (typeof onBeforeSpawn === 'function') onBeforeSpawn();
       });
     }
   };
@@ -290,22 +292,40 @@ export function setupGameLifecycleWatcher({ onDeathOrDisconnect, onGameStart, on
     }
   });
 
-  const stateObserver = new MutationObserver(() => {
-    const nativePlayBtn = queryElement(SELECTORS.nativePlayBtn);
-    const isMenuPresent = Boolean(nativePlayBtn && nativePlayBtn.offsetParent !== null);
+  const checkMenuState = () => {
+    const nativeMenu = document.getElementById('menu');
+    if (!nativeMenu) return;
 
-    if (isGameActive && isMenuPresent) {
+    // Senpa sets #menu { display: 'none' } when entering gameplay / spectating
+    const isMenuClosed = nativeMenu.style.display === 'none';
+
+    if (isMenuClosed && !isGameActive) {
+      isGameActive = true;
+      hideNativeButtons();
+      if (typeof onGameStart === 'function') {
+        onGameStart();
+      }
+    } else if (!isMenuClosed && isGameActive) {
       isGameActive = false;
       if (typeof onDeathOrDisconnect === 'function') {
         onDeathOrDisconnect();
       }
+      setTimeout(alignNativeButtons, 100);
     }
+  };
+
+  const stateObserver = new MutationObserver(() => {
+    checkMenuState();
   });
 
   stateObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['style', 'class'],
     childList: true,
     subtree: true
   });
+
+  setInterval(checkMenuState, 300);
 
   return {
     notifyGameStarted: () => {
@@ -317,7 +337,11 @@ export function setupGameLifecycleWatcher({ onDeathOrDisconnect, onGameStart, on
     },
     notifyInGame: (inGame) => {
       isGameActive = inGame;
-      if (inGame) hideNativeButtons();
+      if (inGame) {
+        hideNativeButtons();
+      } else {
+        setTimeout(alignNativeButtons, 100);
+      }
     }
   };
 }

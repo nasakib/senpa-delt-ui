@@ -26,45 +26,5 @@
       "urlFilter": "||youtube.com/watch?v=dQw4w9WgXcQ*",
       "resourceTypes": ["main_frame"]
     }
-  },
-  {
-    "id": 3,
-    "priority": 1,
-    "action": {
-      "type": "block"
-    },
-    "condition": {
-      "urlFilter": "||gameads.io",
-      "resourceTypes": ["script", "xmlhttprequest", "sub_frame", "image"]
-    }
-  },
-  {
-    "id": 4,
-    "priority": 1,
-    "action": {
-      "type": "block"
-    },
-    "condition": {
-      "urlFilter": "||googlesyndication.com",
-      "resourceTypes": ["script", "xmlhttprequest", "sub_frame", "image"]
-    }
-  },
-  {
-    "id": 5,
-    "priority": 1,
-    "action": {
-      "type": "modifyHeaders",
-      "requestHeaders": [
-        {
-          "header": "x-senpa-io-client-version",
-          "operation": "set",
-          "value": "1.0.0"
-        }
-      ]
-    },
-    "condition": {
-      "urlFilter": "||senpa.io",
-      "resourceTypes": ["main_frame", "sub_frame", "xmlhttprequest"]
-    }
   }
 ]

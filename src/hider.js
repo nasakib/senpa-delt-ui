@@ -19,6 +19,17 @@ export function injectHiderStyle() {
   }
 
   styleEl.textContent = `
+    /* CRITICAL: Ensure Cloudflare Turnstile captcha overlay always appears above our custom UI */
+    #captcha-overlay {
+      z-index: 2147483647 !important;
+      position: fixed !important;
+      inset: 0 !important;
+      display: flex !important;
+      justify-content: center !important;
+      align-items: center !important;
+      pointer-events: auto !important;
+    }
+
     /* Keep native engine containers mounted and functional so WebSocket & React state stay alive */
     .server-panel,
     #primary-inputs {
@@ -56,17 +67,24 @@ export function injectHiderStyle() {
       pointer-events: none !important;
     }
 
-    /* Prevent scale transformation on .main-menu so coordinates align accurately with viewport */
+    /* Prevent scale transformation and containing blocks so native buttons align 1:1 with viewport */
+    #ui-root,
     #menu,
     .main-menu,
     .menu-area,
     .menu-columns,
     .menu-col,
-    .play-panel {
+    .play-panel,
+    .action-row {
       background: transparent !important;
       border: none !important;
       box-shadow: none !important;
       transform: none !important;
+      filter: none !important;
+      backdrop-filter: none !important;
+      perspective: none !important;
+      contain: none !important;
+      overflow: visible !important;
     }
 
     /* Keep native action row transparent */
