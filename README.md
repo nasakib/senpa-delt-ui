@@ -1,6 +1,6 @@
-# Senpa.io - Delt UI Mod (Manifest V3)
+# Senpa.io - Enhanced Modern UI Mod (Manifest V3)
 
-> A modern, sleek browser extension mod for [Senpa.io](https://senpa.io/web/) inspired by the dark glassmorphic aesthetic of [Delt.io](https://delt.io/). Built with modern Manifest V3 and powered by [`extension.js`](https://extension.js.org/).
+> A sleek, clean browser extension mod for [Senpa.io](https://senpa.io/web/) featuring a complete UI overhaul matching classic competitive agar clients, orbital skin carousel, chat player muting, emoji launcher, leaderboard #1 spectate, custom fonts, and colors. Built with modern Manifest V3 and powered by [`extension.js`](https://extension.js.org/).
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Manifest](https://img.shields.io/badge/Manifest-V3-success.svg)
@@ -8,25 +8,67 @@
 
 ---
 
-## ✨ Features
+## ✨ Features & What's Included
 
-- 🔮 **Delt.io Dark Glassmorphism**: Frosted translucent acrylic card (`backdrop-filter: blur()`), specular borders, subtle inner shadows, and dynamic neon accent glow.
-- 🎯 **Targeting & Clean Hiding**: Automatically hides Senpa.io's default pre-game menus (`#menu`, `#bottomBar`, `#gameadsbanner-container`) via high-specificity CSS rules while keeping native DOM elements intact in the background.
-- ⚡ **Bulletproof React Bridge**:
-  - Automatically bypasses React's synthetic event traps by invoking prototype value descriptors on `#name` and `#tag`, dispatching native bubbling `input` and `change` events.
-  - Simulates natural pointer sequences (`mousedown` -> `mouseup` -> `click`) on the native `#play` and `#spectate` buttons.
-- 💀 **Auto-Revive & Death Detection**: Automatically detects when a game ends or when the player dies, restoring the Delt UI overlay and refetching live server status.
-- ⌨️ **Hotkeys & Floating Quick-Toggle**:
-  - Press <kbd>Enter</kbd> to immediately spawn.
-  - Press <kbd>Esc</kbd> anytime during gameplay to open or close the Delt overlay.
-  - Floating minimal FAB button (Δ) in the bottom-left corner for quick mouse access during gameplay.
-- 🌐 **Live Server Synchronization**: Mirrors live Senpa game rooms (`FFA`, `MegaSplit`, `Crazy`, `Instant`, `Teams`) and switches servers with 1 click.
-- ⚙️ **Custom Visual Controls**:
-  - **Accent Color Theme**: Quick neon presets (Cyan, Purple, Emerald, Rose, Gold, Sky Blue) + custom HTML5 color picker.
-  - **Grid Overlay**: Custom grid coordinate color picker and toggle.
-  - **Canvas Filter**: Dark, AMOLED (pure black high-contrast), and Light mode.
-  - **Glass Sliders**: Adjustable backdrop blur intensity and card opacity.
-- 💾 **Settings Persistence**: Saves nickname, clan tag, theme colors, and layout preferences with `chrome.storage.local` (with transparent `localStorage` fallback).
+### 1. 🔇 Player Chat Muting
+- **Hover Mute Button**: Hover over any player's message in `#chat-room` to see a mute icon (🔇). Clicking it immediately mutes the player and hides all their existing and future messages.
+- **Chat Slash Commands**: Type `/mute [nickname]` or `/unmute [nickname]` directly into the chat input bar.
+- **Muted Players Manager**: View all muted players and unmute them with 1-click in the Settings tab.
+
+### 2. 😊 Chat Emojis & Quick Tray
+- **Integrated Emoji Drawer**: Click the smiling emoji icon (😊) on the chat bar to open a categorized emoji drawer (`🔥`, `💀`, `👑`, `⚡`, `❤️`, `🎮`, `🏆`, `😎`, `😭`, `🤡`, etc.).
+- **Auto Shortcodes**: Automatically transforms `:fire:` into 🔥, `:skull:` into 💀, `:crown:` into 👑, `:gg:` into 🏆, and more as you type.
+
+### 3. 👑 Spectate #1 Player Automatically
+- **Gold Crown 👑 & Interactive Leaderboard**: The top player on the in-game leaderboard is decorated with a glowing gold crown. Clicking on the #1 row instantly focuses your camera on them.
+- **"Spectate #1" Button**: Dedicated button on the main menu to immediately spawn camera onto the room leader.
+- **Quick Hotkey**: Press <kbd>1</kbd> during gameplay to automatically spectate the leader.
+
+### 4. 🎨 Complete Menu Redesign (Resembling Provided Layout)
+- **Top Icon Navigation Bar**:
+  - 🏠 **Home / Play**: Central game controls, skin carousel, nicknames, and server join.
+  - 👤 **Profile**: Active skin and link to Senpa native clan & account system.
+  - ⚙️ **Settings**: Enemy skins toggle, custom fonts, grid overlay, and muted players list.
+  - 💧 **Theme / Colors**: Menu background tone, neon accent glow, and card opacity.
+  - ⌨️ **Controls**: Keyboard layout reference.
+  - 🎵 **Audio**: Game sound toggle.
+  - ✕ **Close / Hide**: Minimizes the menu.
+- **No Annoying Clutter**: Stripped of ads, redundant banners, and distracting popups.
+
+### 5. 🖌️ Menu Color & Theme Customizer
+- **Menu Background Tone**: Choose between Charcoal Dark (`#18191c`), Slate Gray (`#23272a`), Midnight (`#0e121a`), AMOLED Black (`#050507`), Deep Navy (`#0f172a`), or enter any custom hex color.
+- **Accent Glow Color**: Pick between Pink Neon, Cyan Glow, Purple Ray, Emerald, Amber Gold, Crimson, or any custom color.
+- **Opacity & Blur Sliders**: Adjust menu transparency from 50% to 100%.
+
+### 6. 🖼️ Active Skin Preview & Orbital Carousel
+- **Central Circular Preview**: Prominently displays the skin you are currently using.
+- **Orbital Ring**: 10 rotating mini circular thumbnails surrounding the main preview.
+- **Custom Skin URL Input**: Paste any direct image link (`https://i.imgur.com/...`) into the skin URL field for instant live preview.
+- **Native Profile Sync**: Automatically synchronizes your chosen skin to Senpa's native `senpaio:profiles` storage so your cell spawns with it in-game.
+- **Cycle Controls**: Arrow buttons (`«` and `»`), eye visibility tool, and `+` / `-` zoom buttons.
+
+### 7. 👁️ Turn Off / On Enemy Skins
+- **Enemy Skins Switch**: Toggle switch in the Settings tab to hide or show opponent custom skins, boosting FPS and visual clarity for competitive play. Automatically updates Senpa's native `enemyCellSkin` setting.
+
+### 8. 🔤 Custom Font Options
+- Customize the typography across the **Menu, Leaderboard, Minimap, and Chat**:
+  - `Rajdhani` (Default Senpa)
+  - `Inter` (Crisp modern sans)
+  - `Ubuntu` (Curved clean sans)
+  - `Roboto` (Geometric sans)
+  - `Press Start 2P` (Pixel 8-bit retro arcade)
+  - `VT323` (Terminal retro)
+  - `Montserrat` (Bold modern)
+  - `Poppins` (Soft geometric)
+
+### 9. 💬 Cooler Looking Chat Box
+- Modern translucent frosted glass design (`backdrop-filter: blur(12px)`).
+- Pill timestamps, glowing nickname accents, and subtle borders.
+- Hover mute actions on every chat line.
+- Modern rounded chat input bar with emoji launcher.
+
+### 10. 🛡️ 100% Native Game Features Preserved
+- Includes an **"Open Original Senpa Settings"** button in the Settings tab, allowing you to access all native controls, audio sliders, account settings, and clan features whenever needed.
 
 ---
 
@@ -36,20 +78,23 @@
 senpa-delt-ui/
 ├── manifest.json         # Manifest V3 extension configuration
 ├── content.js            # Main content script entry point & orchestrator
-├── theme.css             # Delt.io design system, glassmorphism, & hiding rules
-├── popup.html            # Extension action popup in browser toolbar
-├── popup.css             # Popup toolbar styles
-├── popup.js              # Popup toolbar logic
+├── theme.css             # Complete design system matching the UI layout
+├── popup.html            # Toolbar popup
+├── popup.css             # Toolbar popup styling
+├── popup.js              # Toolbar popup logic
 ├── src/
-│   ├── selectors.js      # Centralized Senpa.io DOM selectors & query helpers
+│   ├── selectors.js      # Centralized Senpa.io DOM selectors
+│   ├── storage.js        # Settings, presets, fonts, & persistence
+│   ├── skins.js          # Native profile skin sync & enemy skin toggle
+│   ├── chat.js           # Player muting, emoji drawer, & chat styling
+│   ├── leaderboard.js    # #1 player spectate button, gold crown 👑, & click-to-spectate
+│   ├── settings.js       # Dynamic theme applicator, fonts, & native settings launcher
+│   ├── bridge.js         # React input sync, button click simulation, & death watcher
 │   ├── hider.js          # MutationObserver & CSS stealth hiding engine
-│   ├── bridge.js         # React input sync, button clicks, and game lifecycle hooks
-│   ├── ui.js             # Delt glassmorphic DOM menu generator & tabs
-│   ├── settings.js       # Dynamic theme applicator, CSS variables, & canvas filter
-│   └── storage.js        # chrome.storage.local & localStorage persistence wrapper
+│   └── ui.js             # Orbital skin carousel, top icon navbar, & tabs
 ├── icons/                # Extension icons (16px, 48px, 128px)
-├── dist/                 # Production build artifacts
-└── package.json          # Extension.js configuration and scripts
+├── dist/chromium/        # Production build ready to load into Chrome
+└── package.json          # extension.js configuration & build scripts
 ```
 
 ---
@@ -66,13 +111,11 @@ npm install
 ```
 
 ### 3. Development Mode (with Live Reloading)
-Using [`extension.js`](https://extension.js.org/):
 ```bash
 npm run dev
 # or
 npx extension dev
 ```
-This automatically launches a fresh Chromium profile with the extension pre-loaded and watches your files with instant hot-reloading.
 
 ### 4. Build for Production
 ```bash
@@ -80,7 +123,7 @@ npm run build
 # or
 npx extension build
 ```
-The compiled extension will be output to `dist/chromium`.
+Compiled extension files will be in `dist/chromium`.
 
 ---
 
@@ -91,39 +134,7 @@ The compiled extension will be output to `dist/chromium`.
 3. In the top-right corner, enable **Developer mode**.
 4. Click **Load unpacked** in the top-left corner.
 5. Select the `dist/chromium` folder inside this repository.
-6. Navigate to [https://senpa.io/web/](https://senpa.io/web/) to experience the new Delt.io interface!
-
----
-
-## 🛠️ Customizing DOM Selectors
-
-If Senpa.io updates its UI or modifies class names in the future, all selectors are cleanly centralized in [`src/selectors.js`](file:///c:/Users/natsa/Documents/senpa-delt-ui/src/selectors.js):
-
-```javascript
-export const SELECTORS = {
-  // Container of native main menu
-  nativeMenuContainers: [
-    '#menu',
-    '.main-menu',
-    '.menu-area',
-    '#bottomBar',
-    '#gameadsbanner-container'
-  ],
-
-  // Player Name & Tag inputs
-  nativeNicknameInput: ['#primary-inputs #name', 'input#name'],
-  nativeTagInput: ['#primary-inputs #tag', 'input#tag'],
-
-  // Play button
-  nativePlayBtn: ['#play', 'button#play'],
-
-  // Server rows
-  nativeServerRow: '.server-row',
-  ...
-};
-```
-
-Simply update the selector strings, run `npm run build`, and reload your extension!
+6. Open [https://senpa.io/web/](https://senpa.io/web/) and enjoy the new interface!
 
 ---
 

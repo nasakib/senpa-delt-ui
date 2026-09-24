@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Senpa.io - Delt UI Mod",
-  "version": "1.0.0",
-  "description": "Replaces the default Senpa.io pre-game UI with a sleek Delt.io-inspired dark glassmorphic menu.",
+  "name": "Senpa.io - Enhanced Modern UI Mod",
+  "version": "2.0.0",
+  "description": "Modern compact UI, skin carousel, chat emojis & player muting, leaderboard #1 spectate, custom fonts, and colors for Senpa.io.",
   "permissions": [
     "storage"
   ],
@@ -24,7 +24,7 @@
     }
   ],
   "action": {
-    "default_title": "Senpa.io Delt UI Settings",
+    "default_title": "Senpa.io Enhanced Mod",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",

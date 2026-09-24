@@ -1,14 +1,19 @@
 /**
- * Senpa.io Delt UI Mod - Main Content Script Entry Point
+ * Senpa.io Enhanced Mod - Main Content Script Entry Point
  * 
- * Orchestrates:
- * 1. Native Senpa.io menu hiding (MutationObserver + stealth CSS)
- * 2. Delt.io-inspired glassmorphism overlay creation & injection
- * 3. Bidirectional bridge for nickname sync, play/spectate simulation, and death detection
- * 4. Settings persistence with chrome.storage.local
+ * Features:
+ * 1. Clean hiding of default Senpa.io pre-game containers
+ * 2. Modern compact UI resembling the user's provided screenshot
+ * 3. Orbital skin carousel with active skin preview & native profile sync
+ * 4. Chat player mute system & interactive emoji picker
+ * 5. Leaderboard click-to-spectate and automatic #1 player spectate button (with 👑 crown)
+ * 6. Dynamic menu color & accent customizer
+ * 7. Enemy skins toggle switch
+ * 8. Font selector applied across menu, leaderboard, minimap, and chat
+ * 9. Direct access to native Senpa settings modal so NO original features are lost
  */
 
-import { SELECTORS, queryElement } from './src/selectors.js';
+import { SELECTORS } from './src/selectors.js';
 import { getSettings, saveSettings, resetSettings } from './src/storage.js';
 import { startNativeMenuWatcher, injectHiderStyle } from './src/hider.js';
 import {
@@ -16,7 +21,6 @@ import {
   syncClanTagToNative,
   clickNativePlay,
   clickNativeSpectate,
-  getLiveServersFromNative,
   selectNativeServer,
   setupGameLifecycleWatcher
 } from './src/bridge.js';
@@ -25,23 +29,36 @@ import {
   createDeltMenu,
   showDeltMenu,
   hideDeltMenu,
-  toggleDeltMenu,
-  updateDeltServerList
+  toggleDeltMenu
 } from './src/ui.js';
+import { setNativeActiveSkin, getNativeActiveSkin } from './src/skins.js';
+import { initChatEnhancements } from './src/chat.js';
+import { initLeaderboardEnhancements, spectateTopPlayer } from './src/leaderboard.js';
 
-console.log('[DeltUI] Initializing Senpa.io Delt UI Mod...');
+console.log('[SenpaMod] Initializing Senpa Mod...');
 
-// 1. Immediately inject native UI hiding style to eliminate FOUC (flash of unstyled content)
+// 1. Immediately inject hiding CSS to eliminate FOUC
 injectHiderStyle();
 
 async function init() {
-  // Load saved preferences
   const settings = await getSettings();
 
-  // Apply visual theme (CSS variables, canvas filter, grid)
+  // If a native skin is already set in Senpa, use it
+  const nativeSkin = getNativeActiveSkin();
+  if (nativeSkin && !settings.activeSkinUrl) {
+    settings.activeSkinUrl = nativeSkin;
+  }
+
+  // Apply visual theme (menu background color, accent, font, grid, canvas filter)
   applyTheme(settings);
 
-  // Setup DOM UI Overlay
+  // Initialize Chat Enhancements (Mute system & Emoji launcher)
+  initChatEnhancements();
+
+  // Initialize Leaderboard Enhancements (Click-to-spectate & #1 crown)
+  initLeaderboardEnhancements();
+
+  // Build the complete UI
   createDeltMenu({
     settings,
     onNicknameChange: (val) => {
@@ -52,26 +69,31 @@ async function init() {
       saveSettings({ clanTag: val });
       syncClanTagToNative(val);
     },
+    onSkinChange: (url) => {
+      saveSettings({ activeSkinUrl: url });
+      setNativeActiveSkin(url);
+    },
     onPlay: () => {
-      // Ensure latest values are synced right before spawning
+      // Sync latest values
       const nickInput = document.getElementById('delt-nick-input');
       const tagInput = document.getElementById('delt-tag-input');
+      const skinInput = document.getElementById('delt-skin-url-input');
+
       if (nickInput) syncNicknameToNative(nickInput.value);
       if (tagInput) syncClanTagToNative(tagInput.value);
+      if (skinInput && skinInput.value) setNativeActiveSkin(skinInput.value);
 
-      // Trigger native game spawn
       const success = clickNativePlay();
       if (success) {
         hideDeltMenu();
         lifecycle.notifyGameStarted();
       } else {
-        console.warn('[DeltUI] Native play button not ready yet. Retrying in 250ms...');
         setTimeout(() => {
           if (clickNativePlay()) {
             hideDeltMenu();
             lifecycle.notifyGameStarted();
           }
-        }, 250);
+        }, 200);
       }
     },
     onSpectate: () => {
@@ -88,23 +110,22 @@ async function init() {
     onResetSettings: async () => {
       const def = await resetSettings();
       applyTheme(def);
-      init(); // Rebuild UI with defaults
+      init();
     },
-    onSelectServer: (serverIdentifier) => {
-      selectNativeServer(serverIdentifier);
+    onSelectServer: (srv) => {
+      selectNativeServer(srv);
     }
   });
 
-  // Setup Bridge Game Lifecycle Watcher (Death, Disconnect, Hotkeys)
+  // Setup Game Lifecycle Watcher (Death, Disconnect, Hotkeys)
   const lifecycle = setupGameLifecycleWatcher({
     onDeathOrDisconnect: () => {
-      console.log('[DeltUI] Player died or returned to menu. Re-displaying Delt UI...');
+      console.log('[SenpaMod] Player died or returned to menu. Showing mod UI...');
       showDeltMenu();
       syncInputs();
-      refreshServers();
     },
     onGameStart: () => {
-      console.log('[DeltUI] Game started. Hiding Delt UI...');
+      console.log('[SenpaMod] Game started. Hiding menu...');
       hideDeltMenu();
     },
     onToggleMenu: () => {
@@ -112,55 +133,26 @@ async function init() {
     }
   });
 
-  // Continuously ensure native menus remain hidden in the background
-  startNativeMenuWatcher((nativeMenu) => {
-    // When native menu mounts or re-renders, sync our values to it
+  // Keep native menu hidden in the background
+  startNativeMenuWatcher(() => {
     syncInputs();
-    refreshServers();
   });
 
   function syncInputs() {
     if (settings.nickname) syncNicknameToNative(settings.nickname);
     if (settings.clanTag) syncClanTagToNative(settings.clanTag);
+    if (settings.activeSkinUrl) setNativeActiveSkin(settings.activeSkinUrl);
   }
 
-  function refreshServers() {
-    const servers = getLiveServersFromNative();
-    if (servers.length > 0) {
-      updateDeltServerList(servers, (srv) => {
-        selectNativeServer(srv);
-      });
-    }
-  }
-
-  // Initial sync once DOM content is ready
+  // Initial sync
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      syncInputs();
-      refreshServers();
-    });
+    document.addEventListener('DOMContentLoaded', syncInputs);
   } else {
     syncInputs();
-    refreshServers();
   }
-
-  // Periodic poll for servers in the first 5 seconds after page load
-  let pollCount = 0;
-  const pollInterval = setInterval(() => {
-    refreshServers();
-    pollCount++;
-    if (pollCount > 10) clearInterval(pollInterval);
-  }, 500);
-
-  // Hook server tab refresh button
-  document.addEventListener('click', (e) => {
-    if (e.target && e.target.id === 'delt-refresh-servers-btn') {
-      refreshServers();
-    }
-  });
 }
 
-// Start initialization
+// Start
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init, { once: true });
 } else {

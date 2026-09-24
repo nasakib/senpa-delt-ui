@@ -1,42 +1,49 @@
 /**
- * Delt.io-Inspired Glassmorphic Menu UI Builder
+ * Clean & Modern Game Menu UI Builder
  * 
- * Generates the modern glassmorphism overlay (#delt-menu-container),
- * controls, tab navigation, floating FAB toggle, and server list.
+ * Faithfully matches the provided UI layout:
+ * - Top icon bar (Home, Profile, Settings, Colors, Controls, Audio, Close)
+ * - Central Orbital Skin Carousel (large active circle + rotating orbital thumbnails)
+ * - Direct custom skin URL input with live preview & native sync
+ * - Tag + Nickname input + Color box
+ * - Region & Mode dropdowns
+ * - Wide prominent PLAY button
+ * - SPECTATE & SPECTATE #1 buttons
+ * - Party & WebSocket server join rows
+ * - Full settings: Enemy skins toggle, custom fonts, muted players, and native settings launcher
  */
 
 import { SELECTORS, queryElement } from './selectors.js';
-import { ACCENT_PRESETS } from './settings.js';
+import { AVAILABLE_FONTS, DEFAULT_PRESET_SKINS } from './storage.js';
+import { ACCENT_PRESETS, MENU_BG_PRESETS, openNativeSenpaSettings } from './settings.js';
+import { getMutedPlayers, unmutePlayer } from './chat.js';
+import { setNativeActiveSkin, getNativeActiveSkin } from './skins.js';
+import { spectateTopPlayer } from './leaderboard.js';
+
+let activeSkinIndex = 0;
+let isSkinVisible = true;
 
 /**
- * Creates and injects the complete Delt overlay into the document.
- * 
- * @param {Object} options
- * @param {Object} options.settings Current user settings
- * @param {Function} options.onNicknameChange Callback on nickname input
- * @param {Function} options.onTagChange Callback on clan tag input
- * @param {Function} options.onPlay Callback when Play is clicked
- * @param {Function} options.onSpectate Callback when Spectate is clicked
- * @param {Function} options.onSettingChange Callback when any setting is adjusted
- * @param {Function} options.onResetSettings Callback when reset is clicked
- * @param {Function} options.onSelectServer Callback when server is selected
- * @returns {HTMLElement} The injected menu container
+ * Creates and injects the complete custom menu
  */
 export function createDeltMenu({
   settings,
   onNicknameChange,
   onTagChange,
+  onSkinChange,
   onPlay,
   onSpectate,
   onSettingChange,
   onResetSettings,
   onSelectServer
 }) {
-  // Remove existing instance if present
   let existing = document.getElementById(SELECTORS.modOverlayId);
-  if (existing) {
-    existing.remove();
-  }
+  if (existing) existing.remove();
+
+  const initialSkin = settings.activeSkinUrl || getNativeActiveSkin() || DEFAULT_PRESET_SKINS[0];
+  const skinList = settings.recentSkins && settings.recentSkins.length ? settings.recentSkins : DEFAULT_PRESET_SKINS;
+  activeSkinIndex = Math.max(0, skinList.indexOf(initialSkin));
+  if (activeSkinIndex === -1) activeSkinIndex = 0;
 
   const container = document.createElement('div');
   container.id = SELECTORS.modOverlayId;
@@ -44,276 +51,387 @@ export function createDeltMenu({
 
   container.innerHTML = `
     <div class="delt-glass-card" id="delt-card">
-      <!-- Glow ambient background effect -->
-      <div class="delt-card-glow"></div>
-
-      <!-- Top Header -->
-      <div class="delt-header">
-        <div class="delt-brand">
-          <div class="delt-logo-badge">Δ</div>
-          <div class="delt-title-group">
-            <span class="delt-title">DELT<span class="delt-accent-text">.IO</span></span>
-            <span class="delt-subtitle">SENPA.IO MOD // V3</span>
-          </div>
-        </div>
-        <div class="delt-header-controls">
-          <span class="delt-status-pill"><span class="delt-status-dot"></span>READY</span>
-          <button class="delt-icon-btn delt-close-btn" id="delt-header-close" title="Close Overlay (Esc)">✕</button>
-        </div>
-      </div>
-
-      <!-- Navigation Tabs -->
-      <div class="delt-tab-bar">
-        <button class="delt-tab-btn active" data-tab="play">
-          <span class="delt-tab-icon">▶</span> Play
+      <!-- TOP ICON NAVIGATION BAR -->
+      <div class="delt-nav-bar">
+        <button class="delt-nav-item active" data-tab="play" title="Play / Home">
+          <i class="fas fa-home"></i>
         </button>
-        <button class="delt-tab-btn" data-tab="settings">
-          <span class="delt-tab-icon">⚙</span> Settings
+        <button class="delt-nav-item" data-tab="profile" title="Player Profile">
+          <i class="fas fa-user"></i>
         </button>
-        <button class="delt-tab-btn" data-tab="controls">
-          <span class="delt-tab-icon">⌨</span> Controls
+        <button class="delt-nav-item" data-tab="settings" title="Settings & Fonts">
+          <i class="fas fa-cog"></i>
         </button>
-        <button class="delt-tab-btn" data-tab="servers">
-          <span class="delt-tab-icon">🌐</span> Servers
+        <button class="delt-nav-item" data-tab="theme" title="Menu & Accent Colors">
+          <i class="fas fa-tint"></i>
+        </button>
+        <button class="delt-nav-item" data-tab="controls" title="Keyboard Controls">
+          <i class="fas fa-keyboard"></i>
+        </button>
+        <button class="delt-nav-item" data-tab="audio" title="Audio & Music">
+          <i class="fas fa-music"></i>
+        </button>
+        <button class="delt-nav-item delt-nav-close" id="delt-nav-close-btn" title="Close Menu (Esc)">
+          <i class="fas fa-times-circle"></i>
         </button>
       </div>
 
-      <!-- Tab Content Area -->
-      <div class="delt-tab-contents">
-        <!-- 1. PLAY TAB -->
-        <div class="delt-tab-pane active" id="delt-tab-play">
-          <!-- Nickname & Tag Row -->
-          <div class="delt-input-group">
-            <div class="delt-input-wrap delt-tag-wrap">
-              <label class="delt-label">CLAN TAG</label>
-              <input 
-                type="text" 
-                id="delt-tag-input" 
-                class="delt-input" 
-                placeholder="TAG" 
-                maxlength="5" 
-                value="${escapeHtml(settings.clanTag || '')}"
-              />
-            </div>
-            <div class="delt-input-wrap delt-nick-wrap">
-              <label class="delt-label">PLAYER NICKNAME</label>
-              <input 
-                type="text" 
-                id="delt-nick-input" 
-                class="delt-input" 
-                placeholder="Enter Nickname..." 
-                maxlength="15" 
-                value="${escapeHtml(settings.nickname || '')}"
-                autofocus
-              />
-            </div>
+      <!-- TAB 1: PLAY (FAITHFUL TO SCREENSHOT) -->
+      <div class="delt-tab-pane active" id="delt-tab-play">
+        <!-- ORBITAL SKIN CAROUSEL -->
+        <div class="delt-orbital-container">
+          <!-- Left arrow -->
+          <button type="button" class="delt-orbit-arrow delt-orbit-left" id="delt-skin-prev" title="Previous Skin">«</button>
+
+          <!-- Toggle skin visibility button -->
+          <button type="button" class="delt-orbit-tool delt-orbit-eye" id="delt-skin-eye" title="Toggle Skin Visibility">
+            <i class="fas fa-eye"></i>
+          </button>
+
+          <!-- Orbital Ring of Mini Thumbnails -->
+          <div class="delt-orbital-ring" id="delt-orbital-ring">
+            ${skinList.map((url, idx) => `
+              <div 
+                class="delt-orbit-thumb ${idx === activeSkinIndex ? 'active' : ''}" 
+                data-idx="${idx}" 
+                data-url="${escapeHtml(url)}" 
+                style="--orbit-angle: ${(idx / skinList.length) * 360}deg"
+                title="Select Skin ${idx + 1}"
+              >
+                <img src="${escapeHtml(url)}" alt="Skin ${idx + 1}" />
+              </div>
+            `).join('')}
           </div>
 
-          <!-- Server / Mode Quick Dropdown -->
-          <div class="delt-field-row">
-            <label class="delt-label">GAME MODE & REGION</label>
-            <div class="delt-select-wrap">
-              <select id="delt-mode-select" class="delt-select">
-                <option value="FFA" ${settings.selectedMode === 'FFA' ? 'selected' : ''}>FFA (Free For All)</option>
-                <option value="MegaSplit" ${settings.selectedMode === 'MegaSplit' ? 'selected' : ''}>MegaSplit (Fast)</option>
-                <option value="Crazy" ${settings.selectedMode === 'Crazy' ? 'selected' : ''}>Crazy Mode</option>
-                <option value="Instant" ${settings.selectedMode === 'Instant' ? 'selected' : ''}>Instant Merge</option>
-                <option value="Teams" ${settings.selectedMode === 'Teams' ? 'selected' : ''}>Teams</option>
-              </select>
+          <!-- Main Central Big Skin Circle -->
+          <div class="delt-center-skin-wrap">
+            <div class="delt-center-skin" id="delt-active-skin-preview">
+              <img id="delt-center-skin-img" src="${escapeHtml(initialSkin)}" alt="Active Skin" />
             </div>
           </div>
 
-          <!-- Primary Spawn Actions -->
-          <div class="delt-actions-row">
-            <button class="delt-btn delt-btn-play" id="delt-play-btn">
-              <span class="delt-play-glow"></span>
-              <span class="delt-btn-icon">⚡</span>
-              <span class="delt-btn-text">PLAY / SPAWN</span>
-            </button>
-            <button class="delt-btn delt-btn-spectate" id="delt-spectate-btn" title="Spectate Game">
-              <span class="delt-btn-icon">👁</span>
-              <span class="delt-btn-text">SPECTATE</span>
-            </button>
-          </div>
+          <!-- Right arrow -->
+          <button type="button" class="delt-orbit-arrow delt-orbit-right" id="delt-skin-next" title="Next Skin">»</button>
 
-          <!-- Footer Tips -->
-          <div class="delt-pane-footer">
-            <span class="delt-hint">Press <kbd>Enter</kbd> to Spawn • <kbd>Esc</kbd> to Toggle Menu</span>
+          <!-- Bottom +/- zoom controls -->
+          <div class="delt-orbit-zoom-row">
+            <button type="button" class="delt-zoom-btn" id="delt-zoom-in" title="Zoom In">+</button>
+            <button type="button" class="delt-zoom-btn" id="delt-zoom-out" title="Zoom Out">-</button>
           </div>
         </div>
 
-        <!-- 2. SETTINGS TAB -->
-        <div class="delt-tab-pane" id="delt-tab-settings">
-          <!-- Accent Color Swatches & Picker -->
-          <div class="delt-setting-item">
-            <div class="delt-setting-info">
-              <span class="delt-setting-title">Accent Theme</span>
-              <span class="delt-setting-desc">Primary neon glow and interactive highlight color</span>
-            </div>
-            <div class="delt-color-picker-row">
-              <div class="delt-swatches" id="delt-accent-swatches">
-                ${ACCENT_PRESETS.map(p => `
-                  <button 
-                    type="button" 
-                    class="delt-swatch ${settings.accentColor === p.hex ? 'active' : ''}" 
-                    style="background-color: ${p.hex}" 
-                    data-hex="${p.hex}" 
-                    title="${p.name}"
-                  ></button>
-                `).join('')}
-              </div>
-              <input 
-                type="color" 
-                id="delt-custom-accent" 
-                class="delt-color-input" 
-                value="${settings.accentColor || '#00f2fe'}" 
-                title="Custom Color"
-              />
-            </div>
-          </div>
-
-          <!-- Grid Color & Visibility -->
-          <div class="delt-setting-item">
-            <div class="delt-setting-info">
-              <span class="delt-setting-title">Game Grid Overlay</span>
-              <span class="delt-setting-desc">Toggle background coordinate grid lines & color</span>
-            </div>
-            <div class="delt-setting-controls">
-              <input 
-                type="color" 
-                id="delt-grid-color" 
-                class="delt-color-input" 
-                value="${settings.gridColor || '#1e2638'}" 
-              />
-              <label class="delt-switch">
-                <input type="checkbox" id="delt-grid-toggle" ${settings.showGrid !== false ? 'checked' : ''} />
-                <span class="delt-slider"></span>
-              </label>
-            </div>
-          </div>
-
-          <!-- Canvas Theme Selector -->
-          <div class="delt-setting-item">
-            <div class="delt-setting-info">
-              <span class="delt-setting-title">Canvas Theme</span>
-              <span class="delt-setting-desc">Visual contrast mode for game arena</span>
-            </div>
-            <div class="delt-pill-select" id="delt-canvas-theme-group">
-              <button type="button" class="delt-pill-btn ${settings.canvasTheme === 'dark' || !settings.canvasTheme ? 'active' : ''}" data-theme="dark">Dark</button>
-              <button type="button" class="delt-pill-btn ${settings.canvasTheme === 'amoled' ? 'active' : ''}" data-theme="amoled">AMOLED</button>
-              <button type="button" class="delt-pill-btn ${settings.canvasTheme === 'light' ? 'active' : ''}" data-theme="light">Light</button>
-            </div>
-          </div>
-
-          <!-- Glass Blur & Opacity Sliders -->
-          <div class="delt-setting-item">
-            <div class="delt-setting-info">
-              <span class="delt-setting-title">Backdrop Blur: <span id="delt-blur-val">${settings.blurIntensity ?? 18}px</span></span>
-              <span class="delt-setting-desc">Frosted glass backdrop intensity</span>
-            </div>
-            <input 
-              type="range" 
-              id="delt-blur-slider" 
-              class="delt-range" 
-              min="0" 
-              max="30" 
-              value="${settings.blurIntensity ?? 18}" 
-            />
-          </div>
-
-          <div class="delt-setting-item">
-            <div class="delt-setting-info">
-              <span class="delt-setting-title">Menu Opacity: <span id="delt-opacity-val">${settings.menuOpacity ?? 82}%</span></span>
-              <span class="delt-setting-desc">Transparency of the glassmorphic card</span>
-            </div>
-            <input 
-              type="range" 
-              id="delt-opacity-slider" 
-              class="delt-range" 
-              min="40" 
-              max="95" 
-              value="${settings.menuOpacity ?? 82}" 
-            />
-          </div>
-
-          <!-- Reset Defaults -->
-          <div class="delt-settings-footer">
-            <button type="button" class="delt-btn-text" id="delt-reset-btn">↺ Reset to Defaults</button>
+        <!-- INPUT SECTION: TAG + NICKNAME + COLOR BOX -->
+        <div class="delt-primary-row">
+          <input 
+            type="text" 
+            id="delt-tag-input" 
+            class="delt-input delt-tag-box" 
+            placeholder="TAG" 
+            maxlength="5" 
+            value="${escapeHtml(settings.clanTag || '')}" 
+          />
+          <input 
+            type="text" 
+            id="delt-nick-input" 
+            class="delt-input delt-nick-box" 
+            placeholder="Player Nickname" 
+            maxlength="15" 
+            value="${escapeHtml(settings.nickname || '')}" 
+          />
+          <div class="delt-color-swatch-box" id="delt-player-color-box" title="Accent Color">
+            <input type="color" id="delt-quick-color-input" value="${settings.accentColor || '#fe70c3'}" />
           </div>
         </div>
 
-        <!-- 3. CONTROLS TAB -->
-        <div class="delt-tab-pane" id="delt-tab-controls">
-          <div class="delt-controls-grid">
-            <div class="delt-key-row">
-              <kbd class="delt-kbd">SPACE</kbd>
-              <div class="delt-key-meta">
-                <span class="delt-key-title">Split Cell</span>
-                <span class="delt-key-desc">Splits active cell 50/50 forward</span>
-              </div>
-            </div>
-            <div class="delt-key-row">
-              <kbd class="delt-kbd">W</kbd>
-              <div class="delt-key-meta">
-                <span class="delt-key-title">Eject Mass / Feed</span>
-                <span class="delt-key-desc">Shoots mass pellets towards cursor</span>
-              </div>
-            </div>
-            <div class="delt-key-row">
-              <kbd class="delt-kbd">E</kbd>
-              <div class="delt-key-meta">
-                <span class="delt-key-title">Macro Feed</span>
-                <span class="delt-key-desc">Rapid mass ejection</span>
-              </div>
-            </div>
-            <div class="delt-key-row">
-              <kbd class="delt-kbd">ESC</kbd>
-              <div class="delt-key-meta">
-                <span class="delt-key-title">Toggle Delt Menu</span>
-                <span class="delt-key-desc">Open or close this overlay anytime</span>
-              </div>
-            </div>
-            <div class="delt-key-row">
-              <kbd class="delt-kbd">TAB</kbd>
-              <div class="delt-key-meta">
-                <span class="delt-key-title">Leaderboard / Stats</span>
-                <span class="delt-key-desc">Toggle in-game player rankings</span>
-              </div>
-            </div>
-            <div class="delt-key-row">
-              <kbd class="delt-kbd">ENTER</kbd>
-              <div class="delt-key-meta">
-                <span class="delt-key-title">Quick Spawn</span>
-                <span class="delt-key-desc">Spawns directly into the arena</span>
-              </div>
-            </div>
+        <!-- CUSTOM SKIN URL INPUT -->
+        <div class="delt-url-row">
+          <input 
+            type="url" 
+            id="delt-skin-url-input" 
+            class="delt-input delt-url-box" 
+            placeholder="Custom Skin URL (https://i.imgur.com/...)" 
+            value="${escapeHtml(initialSkin)}" 
+          />
+        </div>
+
+        <!-- REGION & MODE DROPDOWNS -->
+        <div class="delt-select-grid">
+          <select id="delt-region-select" class="delt-select">
+            <option value="North America">North America (Live)</option>
+            <option value="Europe">Europe (Live)</option>
+            <option value="Asia">Asia (Live)</option>
+            <option value="South America">South America (Live)</option>
+          </select>
+          <select id="delt-mode-select" class="delt-select">
+            <option value="FFA" ${settings.selectedMode === 'FFA' ? 'selected' : ''}>FFA</option>
+            <option value="Party" ${settings.selectedMode === 'Party' ? 'selected' : ''}>Party</option>
+            <option value="MegaSplit" ${settings.selectedMode === 'MegaSplit' ? 'selected' : ''}>MegaSplit</option>
+            <option value="Crazy" ${settings.selectedMode === 'Crazy' ? 'selected' : ''}>Crazy</option>
+            <option value="Instant" ${settings.selectedMode === 'Instant' ? 'selected' : ''}>Instant Merge</option>
+            <option value="Teams" ${settings.selectedMode === 'Teams' ? 'selected' : ''}>Teams</option>
+          </select>
+          <button class="delt-btn-icon-square" id="delt-btn-show-servers" title="Server List">
+            <i class="fas fa-layer-group"></i>
+          </button>
+        </div>
+
+        <!-- BIG PLAY BUTTON -->
+        <button class="delt-btn-main-play" id="delt-play-btn">
+          PLAY
+        </button>
+
+        <!-- SECONDARY ACTIONS (SPECTATE & SPECTATE #1) -->
+        <div class="delt-btn-row">
+          <button class="delt-btn-secondary" id="delt-spectate-top-btn" title="Automatically Spectate Leaderboard #1">
+            <span class="delt-gold-crown">👑</span> SPECTATE #1
+          </button>
+          <button class="delt-btn-secondary" id="delt-spectate-btn" title="Spectate Free Roam">
+            SPECTATE
+          </button>
+        </div>
+
+        <!-- PARTY CODE ROW -->
+        <div class="delt-join-row">
+          <input 
+            type="text" 
+            id="delt-party-input" 
+            class="delt-input delt-party-box" 
+            placeholder="Party Token / Room Code" 
+            value="${escapeHtml(settings.partyToken || '')}" 
+          />
+          <button class="delt-btn-join" id="delt-join-party-btn">JOIN</button>
+        </div>
+
+        <!-- WEBSOCKET DIRECT CONNECT ROW -->
+        <div class="delt-join-row">
+          <input 
+            type="text" 
+            id="delt-ws-input" 
+            class="delt-input delt-ws-box" 
+            placeholder="wss://live-arena... or server IP" 
+          />
+          <button class="delt-btn-icon-action" id="delt-ws-connect-btn" title="Direct Connect">
+            ⚡
+          </button>
+        </div>
+
+        <!-- CREATE / ROOM BAR -->
+        <div class="delt-party-bar">
+          <button class="delt-btn-sm" id="delt-party-create-btn">CREATE</button>
+          <span class="delt-party-code-disp" id="delt-party-code-label">PUBLIC</span>
+          <button class="delt-btn-sm" id="delt-party-join-active-btn">JOIN</button>
+        </div>
+      </div>
+
+      <!-- TAB 2: PROFILE -->
+      <div class="delt-tab-pane" id="delt-tab-profile">
+        <div class="delt-pane-heading">PLAYER PROFILE & STATS</div>
+        <div class="delt-profile-card">
+          <div class="delt-profile-avatar-wrap">
+            <img src="${escapeHtml(initialSkin)}" id="delt-profile-avatar" alt="Avatar" />
+          </div>
+          <div class="delt-profile-meta">
+            <span class="delt-profile-nick" id="delt-profile-nick-disp">${escapeHtml(settings.nickname || 'Player')}</span>
+            <span class="delt-profile-tag" id="delt-profile-tag-disp">[${escapeHtml(settings.clanTag || 'TAG')}]</span>
+          </div>
+        </div>
+        <div class="delt-settings-group">
+          <button class="delt-btn-action-full" id="delt-open-native-profile">
+            <i class="fas fa-id-card"></i> Manage Senpa Accounts & Clans
+          </button>
+        </div>
+      </div>
+
+      <!-- TAB 3: SETTINGS (FONTS, ENEMY SKINS, MUTED PLAYERS, NATIVE SETTINGS) -->
+      <div class="delt-tab-pane" id="delt-tab-settings">
+        <div class="delt-pane-heading">GAMEPLAY & VISUAL SETTINGS</div>
+
+        <!-- ENEMY SKINS TOGGLE -->
+        <div class="delt-setting-row">
+          <div class="delt-setting-text">
+            <span class="delt-setting-name">Hide Enemy Skins</span>
+            <span class="delt-setting-hint">Hides opponent custom skins for higher FPS & clarity</span>
+          </div>
+          <label class="delt-switch">
+            <input type="checkbox" id="delt-toggle-enemy-skins" ${settings.hideEnemySkins ? 'checked' : ''} />
+            <span class="delt-slider"></span>
+          </label>
+        </div>
+
+        <!-- FONT SELECTOR -->
+        <div class="delt-setting-row">
+          <div class="delt-setting-text">
+            <span class="delt-setting-name">Game & Leaderboard Font</span>
+            <span class="delt-setting-hint">Changes typography across Menu, Leaderboard, & Chat</span>
+          </div>
+          <select id="delt-font-select" class="delt-select delt-select-sm">
+            ${AVAILABLE_FONTS.map(f => `
+              <option value="${f.value}" ${settings.gameFont === f.value ? 'selected' : ''}>${f.name}</option>
+            `).join('')}
+          </select>
+        </div>
+
+        <!-- CANVAS ARENA GRID OVERLAY -->
+        <div class="delt-setting-row">
+          <div class="delt-setting-text">
+            <span class="delt-setting-name">Arena Grid Lines</span>
+            <span class="delt-setting-hint">Display custom background grid coordinate overlay</span>
+          </div>
+          <div class="delt-setting-actions">
+            <input type="color" id="delt-grid-color" class="delt-color-circle" value="${settings.gridColor || '#1e2638'}" />
+            <label class="delt-switch">
+              <input type="checkbox" id="delt-grid-toggle" ${settings.showGrid !== false ? 'checked' : ''} />
+              <span class="delt-slider"></span>
+            </label>
           </div>
         </div>
 
-        <!-- 4. SERVERS TAB -->
-        <div class="delt-tab-pane" id="delt-tab-servers">
-          <div class="delt-server-list-header">
-            <span>LIVE SENPA.IO ROOMS</span>
-            <button class="delt-refresh-btn" id="delt-refresh-servers-btn" title="Refresh Servers">↻ Refresh</button>
+        <!-- CANVAS CONTRAST THEME -->
+        <div class="delt-setting-row">
+          <div class="delt-setting-text">
+            <span class="delt-setting-name">Canvas Mode</span>
+            <span class="delt-setting-hint">Dark, High-contrast AMOLED, or Light mode</span>
           </div>
-          <div class="delt-server-list" id="delt-server-items">
-            <div class="delt-server-placeholder">Loading available server nodes...</div>
+          <div class="delt-pill-group" id="delt-canvas-theme-pills">
+            <button type="button" class="delt-pill ${settings.canvasTheme === 'dark' || !settings.canvasTheme ? 'active' : ''}" data-theme="dark">Dark</button>
+            <button type="button" class="delt-pill ${settings.canvasTheme === 'amoled' ? 'active' : ''}" data-theme="amoled">AMOLED</button>
+            <button type="button" class="delt-pill ${settings.canvasTheme === 'light' ? 'active' : ''}" data-theme="light">Light</button>
           </div>
+        </div>
+
+        <!-- MUTED PLAYERS MANAGER -->
+        <div class="delt-setting-box">
+          <div class="delt-box-title">
+            <span>MUTED PLAYERS IN CHAT</span>
+            <span id="delt-muted-count">(${settings.mutedPlayers?.length || 0})</span>
+          </div>
+          <div class="delt-muted-list" id="delt-muted-items">
+            ${(!settings.mutedPlayers || settings.mutedPlayers.length === 0)
+              ? '<span class="delt-empty-note">No players muted. Hover over a chat message or type /mute [nick].</span>'
+              : settings.mutedPlayers.map(p => `
+                <div class="delt-muted-tag">
+                  <span>${escapeHtml(p)}</span>
+                  <button type="button" class="delt-unmute-btn" data-nick="${escapeHtml(p)}" title="Unmute">✕</button>
+                </div>
+              `).join('')
+            }
+          </div>
+        </div>
+
+        <!-- NATIVE SENPA SETTINGS LAUNCHER -->
+        <div class="delt-settings-group">
+          <button class="delt-btn-action-full" id="delt-open-native-settings-btn">
+            <i class="fas fa-sliders-h"></i> Open Original Senpa Settings (Controls, Audio, Performance)
+          </button>
+        </div>
+      </div>
+
+      <!-- TAB 4: THEME & COLOR CUSTOMIZER -->
+      <div class="delt-tab-pane" id="delt-tab-theme">
+        <div class="delt-pane-heading">MENU COLOR & THEME CUSTOMIZER</div>
+
+        <!-- MENU BACKGROUND TONE -->
+        <div class="delt-setting-box">
+          <div class="delt-box-title">MENU BACKGROUND COLOR</div>
+          <div class="delt-swatch-grid" id="delt-menu-bg-swatches">
+            ${MENU_BG_PRESETS.map(bg => `
+              <button 
+                type="button" 
+                class="delt-color-pill ${settings.menuBgColor === bg.hex ? 'active' : ''}" 
+                data-hex="${bg.hex}"
+                style="background-color: ${bg.hex}"
+              >
+                ${bg.name}
+              </button>
+            `).join('')}
+          </div>
+          <div class="delt-custom-color-row">
+            <span>Custom Background Tone:</span>
+            <input type="color" id="delt-custom-bg-input" value="${settings.menuBgColor || '#18191c'}" />
+          </div>
+        </div>
+
+        <!-- ACCENT NEON COLOR -->
+        <div class="delt-setting-box">
+          <div class="delt-box-title">ACCENT GLOW COLOR</div>
+          <div class="delt-accent-swatches-row">
+            ${ACCENT_PRESETS.map(p => `
+              <button 
+                type="button" 
+                class="delt-swatch-circle ${settings.accentColor === p.hex ? 'active' : ''}" 
+                data-hex="${p.hex}" 
+                style="background-color: ${p.hex}" 
+                title="${p.name}"
+              ></button>
+            `).join('')}
+            <input type="color" id="delt-custom-accent-input" class="delt-color-circle" value="${settings.accentColor || '#fe70c3'}" title="Custom Hex" />
+          </div>
+        </div>
+
+        <!-- BLUR & OPACITY SLIDERS -->
+        <div class="delt-setting-row">
+          <div class="delt-setting-text">
+            <span class="delt-setting-name">Card Transparency: <span id="delt-opacity-num">${settings.menuOpacity ?? 92}%</span></span>
+          </div>
+          <input type="range" id="delt-opacity-slider" class="delt-range" min="50" max="100" value="${settings.menuOpacity ?? 92}" />
+        </div>
+
+        <div class="delt-setting-row">
+          <div class="delt-setting-text">
+            <span class="delt-setting-name">Backdrop Blur: <span id="delt-blur-num">${settings.blurIntensity ?? 16}px</span></span>
+          </div>
+          <input type="range" id="delt-blur-slider" class="delt-range" min="0" max="25" value="${settings.blurIntensity ?? 16}" />
+        </div>
+
+        <div class="delt-settings-group">
+          <button type="button" class="delt-btn-text" id="delt-reset-theme-btn">↺ Reset Colors to Default</button>
+        </div>
+      </div>
+
+      <!-- TAB 5: CONTROLS & KEYBINDS -->
+      <div class="delt-tab-pane" id="delt-tab-controls">
+        <div class="delt-pane-heading">KEYBOARD CONTROLS REFERENCE</div>
+        <div class="delt-key-grid">
+          <div class="delt-key-card"><kbd>SPACE</kbd><span>Split 50%</span></div>
+          <div class="delt-key-card"><kbd>W</kbd><span>Eject Mass / Feed</span></div>
+          <div class="delt-key-card"><kbd>E</kbd><span>Macro Feed</span></div>
+          <div class="delt-key-card"><kbd>1</kbd><span>Spectate #1 Player</span></div>
+          <div class="delt-key-card"><kbd>Q</kbd><span>Cycle Spectate Target</span></div>
+          <div class="delt-key-card"><kbd>ESC</kbd><span>Toggle Menu Overlay</span></div>
+          <div class="delt-key-card"><kbd>ENTER</kbd><span>Quick Spawn / Chat</span></div>
+          <div class="delt-key-card"><kbd>TAB</kbd><span>Leaderboard Toggle</span></div>
+        </div>
+      </div>
+
+      <!-- TAB 6: AUDIO / SOUND -->
+      <div class="delt-tab-pane" id="delt-tab-audio">
+        <div class="delt-pane-heading">AUDIO & SOUND EFFECTS</div>
+        <div class="delt-setting-row">
+          <div class="delt-setting-text">
+            <span class="delt-setting-name">Game Sound Effects</span>
+            <span class="delt-setting-hint">Eating, splitting, and pop sounds</span>
+          </div>
+          <label class="delt-switch">
+            <input type="checkbox" id="delt-sfx-toggle" checked />
+            <span class="delt-slider"></span>
+          </label>
         </div>
       </div>
     </div>
   `;
 
-  // Append overlay to body or root
   (document.body || document.documentElement).appendChild(container);
 
-  // Inactive floating FAB toggle button (allows opening menu during gameplay)
+  // Floating Quick-Toggle Button during gameplay
   createFabToggle();
 
-  // Attach interactive listeners
-  wireDeltMenuEvents(container, {
+  // Attach all interactive handlers
+  wireMenuEvents(container, {
+    settings,
+    skinList,
     onNicknameChange,
     onTagChange,
+    onSkinChange,
     onPlay,
     onSpectate,
     onSettingChange,
@@ -325,221 +443,339 @@ export function createDeltMenu({
 }
 
 /**
- * Attaches all event handlers to the generated menu
+ * Wire all events inside the custom menu
  */
-function wireDeltMenuEvents(container, callbacks) {
-  // Tab Switching
-  const tabButtons = container.querySelectorAll('.delt-tab-btn');
+function wireMenuEvents(container, ctx) {
+  const {
+    settings,
+    skinList,
+    onNicknameChange,
+    onTagChange,
+    onSkinChange,
+    onPlay,
+    onSpectate,
+    onSettingChange,
+    onResetSettings,
+    onSelectServer
+  } = ctx;
+
+  // 1. TOP NAV BAR TAB SWITCHING
+  const navItems = container.querySelectorAll('.delt-nav-item:not(.delt-nav-close)');
   const tabPanes = container.querySelectorAll('.delt-tab-pane');
 
-  tabButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const tabTarget = btn.getAttribute('data-tab');
-      tabButtons.forEach(b => b.classList.remove('active'));
+  navItems.forEach(item => {
+    item.addEventListener('click', () => {
+      const tabTarget = item.getAttribute('data-tab');
+      navItems.forEach(b => b.classList.remove('active'));
       tabPanes.forEach(p => p.classList.remove('active'));
 
-      btn.classList.add('active');
+      item.classList.add('active');
       const targetPane = container.querySelector(`#delt-tab-${tabTarget}`);
-      if (targetPane) {
-        targetPane.classList.add('active');
-      }
+      if (targetPane) targetPane.classList.add('active');
     });
   });
 
-  // Nickname & Tag Inputs (live sync)
+  // Close button
+  const closeBtn = container.querySelector('#delt-nav-close-btn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => hideDeltMenu());
+  }
+
+  // 2. ORBITAL SKIN CAROUSEL
+  const activeSkinImg = container.querySelector('#delt-center-skin-img');
+  const skinUrlInput = container.querySelector('#delt-skin-url-input');
+  const orbitThumbs = container.querySelectorAll('.delt-orbit-thumb');
+
+  const updateActiveSkin = (url, idx = -1) => {
+    if (activeSkinImg) activeSkinImg.src = url;
+    if (skinUrlInput) skinUrlInput.value = url;
+
+    orbitThumbs.forEach((thumb, i) => {
+      if (i === idx || thumb.getAttribute('data-url') === url) {
+        thumb.classList.add('active');
+      } else {
+        thumb.classList.remove('active');
+      }
+    });
+
+    // Save to native Senpa profile
+    setNativeActiveSkin(url);
+    if (typeof onSkinChange === 'function') {
+      onSkinChange(url);
+    }
+  };
+
+  // Thumbnail clicks
+  orbitThumbs.forEach((thumb) => {
+    thumb.addEventListener('click', () => {
+      const url = thumb.getAttribute('data-url');
+      const idx = Number(thumb.getAttribute('data-idx'));
+      activeSkinIndex = idx;
+      updateActiveSkin(url, idx);
+    });
+  });
+
+  // Prev / Next arrows
+  const prevBtn = container.querySelector('#delt-skin-prev');
+  const nextBtn = container.querySelector('#delt-skin-next');
+
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      activeSkinIndex = (activeSkinIndex - 1 + skinList.length) % skinList.length;
+      updateActiveSkin(skinList[activeSkinIndex], activeSkinIndex);
+    });
+  }
+
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      activeSkinIndex = (activeSkinIndex + 1) % skinList.length;
+      updateActiveSkin(skinList[activeSkinIndex], activeSkinIndex);
+    });
+  }
+
+  // Eye tool (toggle skin preview)
+  const eyeBtn = container.querySelector('#delt-skin-eye');
+  if (eyeBtn) {
+    eyeBtn.addEventListener('click', () => {
+      isSkinVisible = !isSkinVisible;
+      if (activeSkinImg) {
+        activeSkinImg.style.opacity = isSkinVisible ? '1' : '0.1';
+      }
+      eyeBtn.classList.toggle('active', !isSkinVisible);
+    });
+  }
+
+  // Zoom +/- buttons
+  let skinZoom = 1;
+  const zoomIn = container.querySelector('#delt-zoom-in');
+  const zoomOut = container.querySelector('#delt-zoom-out');
+  if (zoomIn && activeSkinImg) {
+    zoomIn.addEventListener('click', () => {
+      skinZoom = Math.min(1.4, skinZoom + 0.1);
+      activeSkinImg.style.transform = `scale(${skinZoom})`;
+    });
+  }
+  if (zoomOut && activeSkinImg) {
+    zoomOut.addEventListener('click', () => {
+      skinZoom = Math.max(0.7, skinZoom - 0.1);
+      activeSkinImg.style.transform = `scale(${skinZoom})`;
+    });
+  }
+
+  // Custom Skin URL Input (live preview & sync)
+  if (skinUrlInput) {
+    skinUrlInput.addEventListener('input', (e) => {
+      const url = e.target.value.trim();
+      if (url && activeSkinImg) {
+        activeSkinImg.src = url;
+        setNativeActiveSkin(url);
+        if (typeof onSkinChange === 'function') onSkinChange(url);
+      }
+    });
+  }
+
+  // 3. TAG & NICKNAME INPUTS
   const nickInput = container.querySelector('#delt-nick-input');
   const tagInput = container.querySelector('#delt-tag-input');
 
   if (nickInput) {
     nickInput.addEventListener('input', (e) => {
-      callbacks.onNicknameChange(e.target.value);
+      onNicknameChange(e.target.value);
+      const profileNick = container.querySelector('#delt-profile-nick-disp');
+      if (profileNick) profileNick.textContent = e.target.value || 'Player';
     });
     nickInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        callbacks.onPlay();
-      }
+      if (e.key === 'Enter') onPlay();
     });
   }
 
   if (tagInput) {
     tagInput.addEventListener('input', (e) => {
-      callbacks.onTagChange(e.target.value);
+      onTagChange(e.target.value);
+      const profileTag = container.querySelector('#delt-profile-tag-disp');
+      if (profileTag) profileTag.textContent = `[${e.target.value || 'TAG'}]`;
     });
     tagInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        callbacks.onPlay();
-      }
+      if (e.key === 'Enter') onPlay();
     });
   }
 
-  // Play & Spectate Buttons
+  // Quick Accent Color Picker on Play Tab
+  const quickColor = container.querySelector('#delt-quick-color-input');
+  if (quickColor) {
+    quickColor.addEventListener('input', (e) => {
+      onSettingChange({ accentColor: e.target.value });
+    });
+  }
+
+  // 4. PLAY & SPECTATE BUTTONS
   const playBtn = container.querySelector('#delt-play-btn');
   const spectateBtn = container.querySelector('#delt-spectate-btn');
+  const spectateTopBtn = container.querySelector('#delt-spectate-top-btn');
 
-  if (playBtn) {
-    playBtn.addEventListener('click', () => callbacks.onPlay());
+  if (playBtn) playBtn.addEventListener('click', () => onPlay());
+  if (spectateBtn) spectateBtn.addEventListener('click', () => onSpectate());
+  if (spectateTopBtn) {
+    spectateTopBtn.addEventListener('click', () => {
+      hideDeltMenu();
+      spectateTopPlayer();
+    });
   }
 
-  if (spectateBtn) {
-    spectateBtn.addEventListener('click', () => callbacks.onSpectate());
-  }
-
-  // Close Header Button
-  const closeBtn = container.querySelector('#delt-header-close');
-  if (closeBtn) {
-    closeBtn.addEventListener('click', () => hideDeltMenu());
-  }
-
-  // Game Mode Select
+  // Mode & Region Select
   const modeSelect = container.querySelector('#delt-mode-select');
   if (modeSelect) {
     modeSelect.addEventListener('change', (e) => {
-      callbacks.onSettingChange({ selectedMode: e.target.value });
-      if (typeof callbacks.onSelectServer === 'function') {
-        callbacks.onSelectServer(e.target.value);
+      onSettingChange({ selectedMode: e.target.value });
+      if (typeof onSelectServer === 'function') onSelectServer(e.target.value);
+    });
+  }
+
+  // Party Join / Create
+  const partyInput = container.querySelector('#delt-party-input');
+  const partyJoinBtn = container.querySelector('#delt-join-party-btn');
+  if (partyJoinBtn && partyInput) {
+    partyJoinBtn.addEventListener('click', () => {
+      const code = partyInput.value.trim();
+      if (code) {
+        onSettingChange({ partyToken: code });
+        if (typeof onSelectServer === 'function') onSelectServer(code);
       }
     });
   }
 
-  // Accent Color Preset Swatches
-  const swatches = container.querySelectorAll('.delt-swatch');
-  const customColorInput = container.querySelector('#delt-custom-accent');
+  // 5. SETTINGS: ENEMY SKINS, FONTS, MUTED PLAYERS
+  const enemySkinsToggle = container.querySelector('#delt-toggle-enemy-skins');
+  if (enemySkinsToggle) {
+    enemySkinsToggle.addEventListener('change', (e) => {
+      onSettingChange({ hideEnemySkins: e.target.checked });
+    });
+  }
 
-  swatches.forEach(swatch => {
+  const fontSelect = container.querySelector('#delt-font-select');
+  if (fontSelect) {
+    fontSelect.addEventListener('change', (e) => {
+      onSettingChange({ gameFont: e.target.value });
+    });
+  }
+
+  // Grid Controls
+  const gridColor = container.querySelector('#delt-grid-color');
+  const gridToggle = container.querySelector('#delt-grid-toggle');
+  if (gridColor) gridColor.addEventListener('input', (e) => onSettingChange({ gridColor: e.target.value }));
+  if (gridToggle) gridToggle.addEventListener('change', (e) => onSettingChange({ showGrid: e.target.checked }));
+
+  // Canvas Theme Pills
+  const canvasPills = container.querySelectorAll('#delt-canvas-theme-pills .delt-pill');
+  canvasPills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      canvasPills.forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      onSettingChange({ canvasTheme: pill.getAttribute('data-theme') });
+    });
+  });
+
+  // Muted Players Unmute handlers
+  container.querySelectorAll('.delt-unmute-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const nick = btn.getAttribute('data-nick');
+      unmutePlayer(nick);
+      btn.parentElement.remove();
+    });
+  });
+
+  // Native Senpa Settings Modal Launcher
+  const nativeSettingsBtn = container.querySelector('#delt-open-native-settings-btn');
+  if (nativeSettingsBtn) {
+    nativeSettingsBtn.addEventListener('click', () => {
+      openNativeSenpaSettings();
+    });
+  }
+
+  // 6. THEME TAB CONTROLS (Menu BG & Accent Color)
+  const bgSwatches = container.querySelectorAll('#delt-menu-bg-swatches .delt-color-pill');
+  const customBgInput = container.querySelector('#delt-custom-bg-input');
+
+  bgSwatches.forEach(swatch => {
     swatch.addEventListener('click', () => {
       const hex = swatch.getAttribute('data-hex');
-      swatches.forEach(s => s.classList.remove('active'));
+      bgSwatches.forEach(s => s.classList.remove('active'));
       swatch.classList.add('active');
-      if (customColorInput) customColorInput.value = hex;
-      callbacks.onSettingChange({ accentColor: hex });
+      if (customBgInput) customBgInput.value = hex;
+      onSettingChange({ menuBgColor: hex });
     });
   });
 
-  if (customColorInput) {
-    customColorInput.addEventListener('input', (e) => {
-      swatches.forEach(s => s.classList.remove('active'));
-      callbacks.onSettingChange({ accentColor: e.target.value });
+  if (customBgInput) {
+    customBgInput.addEventListener('input', (e) => {
+      bgSwatches.forEach(s => s.classList.remove('active'));
+      onSettingChange({ menuBgColor: e.target.value });
     });
   }
 
-  // Grid Color & Toggle
-  const gridColorInput = container.querySelector('#delt-grid-color');
-  const gridToggle = container.querySelector('#delt-grid-toggle');
+  const accentSwatches = container.querySelectorAll('.delt-accent-swatches-row .delt-swatch-circle');
+  const customAccentInput = container.querySelector('#delt-custom-accent-input');
 
-  if (gridColorInput) {
-    gridColorInput.addEventListener('input', (e) => {
-      callbacks.onSettingChange({ gridColor: e.target.value });
-    });
-  }
-
-  if (gridToggle) {
-    gridToggle.addEventListener('change', (e) => {
-      callbacks.onSettingChange({ showGrid: e.target.checked });
-    });
-  }
-
-  // Canvas Theme Segmented Buttons
-  const themeButtons = container.querySelectorAll('#delt-canvas-theme-group .delt-pill-btn');
-  themeButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const theme = btn.getAttribute('data-theme');
-      themeButtons.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      callbacks.onSettingChange({ canvasTheme: theme });
+  accentSwatches.forEach(swatch => {
+    swatch.addEventListener('click', () => {
+      const hex = swatch.getAttribute('data-hex');
+      accentSwatches.forEach(s => s.classList.remove('active'));
+      swatch.classList.add('active');
+      if (customAccentInput) customAccentInput.value = hex;
+      if (quickColor) quickColor.value = hex;
+      onSettingChange({ accentColor: hex });
     });
   });
 
-  // Blur & Opacity Sliders
+  if (customAccentInput) {
+    customAccentInput.addEventListener('input', (e) => {
+      accentSwatches.forEach(s => s.classList.remove('active'));
+      if (quickColor) quickColor.value = e.target.value;
+      onSettingChange({ accentColor: e.target.value });
+    });
+  }
+
+  // Opacity & Blur Sliders
+  const opSlider = container.querySelector('#delt-opacity-slider');
+  const opNum = container.querySelector('#delt-opacity-num');
+  if (opSlider) {
+    opSlider.addEventListener('input', (e) => {
+      if (opNum) opNum.textContent = `${e.target.value}%`;
+      onSettingChange({ menuOpacity: Number(e.target.value) });
+    });
+  }
+
   const blurSlider = container.querySelector('#delt-blur-slider');
-  const blurVal = container.querySelector('#delt-blur-val');
+  const blurNum = container.querySelector('#delt-blur-num');
   if (blurSlider) {
     blurSlider.addEventListener('input', (e) => {
-      const val = Number(e.target.value);
-      if (blurVal) blurVal.textContent = `${val}px`;
-      callbacks.onSettingChange({ blurIntensity: val });
+      if (blurNum) blurNum.textContent = `${e.target.value}px`;
+      onSettingChange({ blurIntensity: Number(e.target.value) });
     });
   }
 
-  const opacitySlider = container.querySelector('#delt-opacity-slider');
-  const opacityVal = container.querySelector('#delt-opacity-val');
-  if (opacitySlider) {
-    opacitySlider.addEventListener('input', (e) => {
-      const val = Number(e.target.value);
-      if (opacityVal) opacityVal.textContent = `${val}%`;
-      callbacks.onSettingChange({ menuOpacity: val });
+  // Reset Theme Button
+  const resetThemeBtn = container.querySelector('#delt-reset-theme-btn');
+  if (resetThemeBtn) {
+    resetThemeBtn.addEventListener('click', () => {
+      onResetSettings();
     });
-  }
-
-  // Reset Button
-  const resetBtn = container.querySelector('#delt-reset-btn');
-  if (resetBtn) {
-    resetBtn.addEventListener('click', () => callbacks.onResetSettings());
   }
 }
 
-/**
- * Creates floating FAB button that lets players open Delt menu during gameplay
- */
 function createFabToggle() {
   let fab = document.getElementById(SELECTORS.modFabToggleId);
   if (!fab) {
     fab = document.createElement('button');
     fab.id = SELECTORS.modFabToggleId;
     fab.className = 'delt-fab';
-    fab.title = 'Open Delt.io Menu (Esc)';
-    fab.innerHTML = `<span>Δ</span>`;
-    fab.addEventListener('click', () => {
-      toggleDeltMenu();
-    });
+    fab.title = 'Open Menu (Esc)';
+    fab.innerHTML = `<i class="fas fa-bars"></i>`;
+    fab.addEventListener('click', () => toggleDeltMenu());
     (document.body || document.documentElement).appendChild(fab);
   }
 }
 
-/**
- * Update the list of servers displayed in the Servers tab
- * @param {Array<{name: string, players: string, mode: string, isActive: boolean}>} servers 
- * @param {Function} onSelect 
- */
-export function updateDeltServerList(servers, onSelect) {
-  const listContainer = document.querySelector('#delt-server-items');
-  if (!listContainer) return;
-
-  if (!servers || servers.length === 0) {
-    listContainer.innerHTML = `<div class="delt-server-placeholder">No active Senpa servers detected. Retrying...</div>`;
-    return;
-  }
-
-  listContainer.innerHTML = '';
-  servers.forEach((srv, idx) => {
-    const item = document.createElement('div');
-    item.className = `delt-server-card ${srv.isActive ? 'active' : ''}`;
-    item.innerHTML = `
-      <div class="delt-server-meta">
-        <span class="delt-srv-name">${escapeHtml(srv.name)}</span>
-        <span class="delt-srv-mode">${escapeHtml(srv.mode)}</span>
-      </div>
-      <div class="delt-server-right">
-        <span class="delt-srv-players">👥 ${escapeHtml(srv.players)}</span>
-        <button class="delt-srv-btn">${srv.isActive ? 'CONNECTED' : 'JOIN'}</button>
-      </div>
-    `;
-
-    item.addEventListener('click', () => {
-      const allCards = listContainer.querySelectorAll('.delt-server-card');
-      allCards.forEach(c => c.classList.remove('active'));
-      item.classList.add('active');
-      if (typeof onSelect === 'function') {
-        onSelect(srv.name || idx);
-      }
-    });
-
-    listContainer.appendChild(item);
-  });
-}
-
-/**
- * Show the Delt menu overlay
- */
 export function showDeltMenu() {
   const container = document.getElementById(SELECTORS.modOverlayId);
   const fab = document.getElementById(SELECTORS.modFabToggleId);
@@ -547,14 +783,9 @@ export function showDeltMenu() {
     container.classList.remove('delt-hidden');
     container.style.display = 'flex';
   }
-  if (fab) {
-    fab.style.display = 'none';
-  }
+  if (fab) fab.style.display = 'none';
 }
 
-/**
- * Hide the Delt menu overlay (pointer events return cleanly to game canvas)
- */
 export function hideDeltMenu() {
   const container = document.getElementById(SELECTORS.modOverlayId);
   const fab = document.getElementById(SELECTORS.modFabToggleId);
@@ -562,38 +793,24 @@ export function hideDeltMenu() {
     container.classList.add('delt-hidden');
     container.style.display = 'none';
   }
-  if (fab) {
-    fab.style.display = 'flex';
-  }
-  
-  // Ensure focus is restored to the canvas for immediate keyboard controls
+  if (fab) fab.style.display = 'flex';
+
   const canvas = queryElement(SELECTORS.nativeCanvas);
-  if (canvas) {
-    canvas.focus();
-  }
+  if (canvas) canvas.focus();
 }
 
-/**
- * Check if the menu is currently visible
- */
 export function isDeltMenuVisible() {
   const container = document.getElementById(SELECTORS.modOverlayId);
   return container && container.style.display !== 'none' && !container.classList.contains('delt-hidden');
 }
 
-/**
- * Toggle menu visibility
- */
 export function toggleDeltMenu() {
-  if (isDeltMenuVisible()) {
-    hideDeltMenu();
-  } else {
-    showDeltMenu();
-  }
+  if (isDeltMenuVisible()) hideDeltMenu();
+  else showDeltMenu();
 }
 
 function escapeHtml(str) {
-  return String(str)
+  return String(str || '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
