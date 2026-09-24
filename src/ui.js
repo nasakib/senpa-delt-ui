@@ -19,8 +19,15 @@ import { DEFAULT_ORBITAL_SKINS } from './skinPresets.js';
 import { ACCENT_PRESETS, MENU_BG_PRESETS, openNativeSenpaSettings } from './settings.js';
 import { getMutedPlayers, unmutePlayer } from './chat.js';
 import { setNativeActiveSkin, getNativeActiveSkin } from './skins.js';
-import { spectateTopPlayer } from './leaderboard.js';
-import { alignNativeButtons, hideNativeButtons } from './bridge.js';
+import {
+  alignNativeButtons,
+  hideNativeButtons,
+  triggerPlay,
+  triggerSpectate,
+  listenEngineStatus,
+  fetchLiveServers,
+  selectNativeServer
+} from './bridge.js';
 
 let activeSkinIndex = 0;
 let isSkinVisible = true;
@@ -177,17 +184,29 @@ export function createDeltMenu({
         </div>
 
         <!-- BIG PLAY BUTTON (Target for Native #play Alignment) -->
-        <div class="delt-btn-main-play" id="delt-play-target">
-          PLAY
-        </div>
+        <button type="button" class="delt-btn-main-play" id="delt-play-target">
+          <span class="delt-play-status-dot ready" id="delt-play-status-dot" title="Server Ready"></span>
+          <span id="delt-play-label">PLAY</span>
+        </button>
 
         <!-- SECONDARY ACTIONS (SPECTATE & SPECTATE #1) -->
         <div class="delt-btn-row">
-          <button class="delt-btn-secondary" id="delt-spectate-top-btn" title="Automatically Spectate Leaderboard #1">
+          <button type="button" class="delt-btn-secondary" id="delt-spectate-top-btn" title="Automatically Spectate Leaderboard #1">
             <span class="delt-gold-crown">👑</span> SPECTATE #1
           </button>
-          <div class="delt-btn-secondary" id="delt-spectate-target" title="Spectate Free Roam">
+          <button type="button" class="delt-btn-secondary" id="delt-spectate-target" title="Spectate Free Roam">
             SPECTATE
+          </button>
+        </div>
+
+        <!-- LIVE SERVERS OVERLAY MODAL -->
+        <div class="delt-server-modal delt-hidden" id="delt-server-modal">
+          <div class="delt-server-modal-header">
+            <span><i class="fas fa-server"></i> LIVE SERVERS</span>
+            <button type="button" class="delt-server-modal-close" id="delt-server-modal-close">✕</button>
+          </div>
+          <div class="delt-server-modal-list" id="delt-server-modal-list">
+            <div class="delt-server-loading">Fetching online servers...</div>
           </div>
         </div>
 
@@ -607,7 +626,116 @@ function wireMenuEvents(container, ctx) {
     });
   }
 
-  // 4. SPECTATE TOP BUTTON
+  // 4. MAIN PLAY & SPECTATE ACTION BUTTONS
+  const playTarget = container.querySelector('#delt-play-target');
+  const playLabel = container.querySelector('#delt-play-label');
+  const playDot = container.querySelector('#delt-play-status-dot');
+
+  if (playTarget) {
+    playTarget.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (playLabel) playLabel.textContent = 'SPAWNING...';
+      playTarget.classList.add('delt-btn-loading');
+      if (typeof onPlay === 'function') onPlay();
+      else triggerPlay();
+    });
+  }
+
+  const spectateTarget = container.querySelector('#delt-spectate-target');
+  if (spectateTarget) {
+    spectateTarget.addEventListener('click', (e) => {
+      e.stopPropagation();
+      hideDeltMenu();
+      if (typeof onSpectate === 'function') onSpectate();
+      else triggerSpectate();
+    });
+  }
+
+  // Engine status listener to keep button state updated
+  listenEngineStatus((statusDetail) => {
+    if (!playLabel || !playDot) return;
+    if (statusDetail.status === 'ready' || statusDetail.status === 'connected') {
+      playLabel.textContent = 'PLAY';
+      playDot.className = 'delt-play-status-dot ready';
+      playDot.title = 'Server Ready';
+    } else if (statusDetail.status === 'connecting') {
+      playLabel.textContent = 'CONNECTING...';
+      playDot.className = 'delt-play-status-dot connecting';
+      playDot.title = 'Connecting to Server...';
+    } else if (statusDetail.status === 'waiting_handshake') {
+      playLabel.textContent = 'JOINING...';
+      playDot.className = 'delt-play-status-dot connecting';
+      playDot.title = 'Waiting for Server Handshake...';
+    }
+  });
+
+  window.addEventListener('delt-play-triggered', () => {
+    hideDeltMenu();
+  });
+
+  // 5. LIVE SERVERS MODAL
+  const serverModal = container.querySelector('#delt-server-modal');
+  const showServersBtn = container.querySelector('#delt-btn-show-servers');
+  const closeServerModal = container.querySelector('#delt-server-modal-close');
+  const serverListEl = container.querySelector('#delt-server-modal-list');
+
+  const renderServers = async () => {
+    if (!serverListEl) return;
+    serverListEl.innerHTML = '<div class="delt-server-loading">Fetching online servers...</div>';
+    const servers = await fetchLiveServers();
+    if (!servers.length) {
+      serverListEl.innerHTML = '<div class="delt-empty-note">No servers found. Check your internet connection.</div>';
+      return;
+    }
+
+    serverListEl.innerHTML = servers.map(s => `
+      <div class="delt-server-row-item" data-host="${escapeHtml(s.host)}" data-region="${escapeHtml(s.region || '')}">
+        <div class="delt-server-info-col">
+          <span class="delt-server-row-name">${escapeHtml(s.name || s.host)}</span>
+          <span class="delt-server-row-sub">${escapeHtml(s.region || '')} • ${escapeHtml(s.mode_name || s.mode || 'FFA')}</span>
+        </div>
+        <div class="delt-server-meta-col">
+          <span class="delt-server-badge-players">${escapeHtml(s.num_players || 0)}/${escapeHtml(s.max_players || 100)}</span>
+          <button type="button" class="delt-btn-server-connect">CONNECT</button>
+        </div>
+      </div>
+    `).join('');
+
+    serverListEl.querySelectorAll('.delt-server-row-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const host = item.getAttribute('data-host');
+        const region = item.getAttribute('data-region');
+        if (region) {
+          localStorage.setItem('senpaio:region', region);
+          const regionSelect = container.querySelector('#delt-region-select');
+          if (regionSelect) {
+            if (region === 'NA') regionSelect.value = 'North America';
+            else if (region === 'EU') regionSelect.value = 'Europe';
+            else if (region === 'AS') regionSelect.value = 'Asia';
+          }
+        }
+        selectNativeServer(host);
+        if (serverModal) serverModal.classList.add('delt-hidden');
+      });
+    });
+  };
+
+  if (showServersBtn && serverModal) {
+    showServersBtn.addEventListener('click', () => {
+      serverModal.classList.toggle('delt-hidden');
+      if (!serverModal.classList.contains('delt-hidden')) {
+        renderServers();
+      }
+    });
+  }
+
+  if (closeServerModal && serverModal) {
+    closeServerModal.addEventListener('click', () => {
+      serverModal.classList.add('delt-hidden');
+    });
+  }
+
+  // 6. SPECTATE TOP BUTTON
   const spectateTopBtn = container.querySelector('#delt-spectate-top-btn');
   if (spectateTopBtn) {
     spectateTopBtn.addEventListener('click', () => {

@@ -19,7 +19,9 @@ import {
   setupGameLifecycleWatcher,
   alignNativeButtons,
   hookNativeButtonEvents,
-  hideNativeButtons
+  hideNativeButtons,
+  triggerPlay,
+  triggerSpectate
 } from './src/bridge.js';
 import { applyTheme } from './src/settings.js';
 import {
@@ -32,10 +34,24 @@ import { setNativeActiveSkin, getNativeActiveSkin } from './src/skins.js';
 import { initChatEnhancements } from './src/chat.js';
 import { initLeaderboardEnhancements } from './src/leaderboard.js';
 
-console.log('[SenpaMod] Initializing Senpa Mod v2.1 (Anti-Redirect & Skins Fix)...');
+console.log('[SenpaMod] Initializing Senpa Mod v2.2 (Main World Engine Shield & Reliable Play)...');
 
 // 1. Immediately inject hiding CSS
 injectHiderStyle();
+
+// 2. Pre-seed region to prevent 5-second ipapi.co stall
+try {
+  if (!localStorage.getItem('senpaio:region')) {
+    localStorage.setItem('senpaio:region', 'NA');
+  }
+} catch (e) {}
+
+// 3. Ensure MAIN world bridge script is injected
+try {
+  const scriptEl = document.createElement('script');
+  scriptEl.src = chrome.runtime.getURL('src/injected.js');
+  (document.head || document.documentElement).appendChild(scriptEl);
+} catch (e) {}
 
 async function init() {
   const settings = await getSettings();
@@ -66,6 +82,12 @@ async function init() {
     onSkinChange: (url) => {
       saveSettings({ activeSkinUrl: url });
       setNativeActiveSkin(url);
+    },
+    onPlay: () => {
+      triggerPlay();
+    },
+    onSpectate: () => {
+      triggerSpectate();
     },
     onSettingChange: (partial) => {
       saveSettings(partial).then(updated => {

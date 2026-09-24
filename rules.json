@@ -3,10 +3,13 @@
     "id": 1,
     "priority": 1,
     "action": {
-      "type": "block"
+      "type": "redirect",
+      "redirect": {
+        "url": "https://senpa.io/web"
+      }
     },
     "condition": {
-      "urlFilter": "||youtube.com/watch?v=mMAnCgjeZ4Q",
+      "urlFilter": "||youtube.com/watch?v=mMAnCgjeZ4Q*",
       "resourceTypes": ["main_frame"]
     }
   },
@@ -14,10 +17,13 @@
     "id": 2,
     "priority": 1,
     "action": {
-      "type": "block"
+      "type": "redirect",
+      "redirect": {
+        "url": "https://senpa.io/web"
+      }
     },
     "condition": {
-      "urlFilter": "||youtube.com/watch?v=dQw4w9WgXcQ",
+      "urlFilter": "||youtube.com/watch?v=dQw4w9WgXcQ*",
       "resourceTypes": ["main_frame"]
     }
   },

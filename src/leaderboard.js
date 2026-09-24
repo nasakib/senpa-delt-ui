@@ -8,7 +8,7 @@
  */
 
 import { SELECTORS, queryElement } from './selectors.js';
-import { clickNativeSpectate } from './bridge.js';
+import { triggerSpectate } from './bridge.js';
 
 let lbObserver = null;
 
@@ -26,8 +26,8 @@ export function initLeaderboardEnhancements() {
 export function spectateTopPlayer() {
   console.log('[SenpaMod] Spectating #1 player...');
 
-  // 1. Ensure spectate mode is active
-  clickNativeSpectate();
+  // 1. Ensure spectate mode is active via safe bridge
+  triggerSpectate();
 
   // 2. Dispatch 'Q' keydown/keyup to toggle/cycle spectate target to leader if needed
   setTimeout(() => {

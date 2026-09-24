@@ -1,14 +1,18 @@
 /**
  * Bridge Module between Custom Menu and Senpa.io Game Engine
  * 
- * Solves the anti-tamper redirect (CE.checkEvent / isTrusted) by aligning
- * Senpa's native #play and #spectate buttons directly over our custom UI buttons,
- * ensuring all clicks are 100% genuine browser hardware events with isTrusted: true!
+ * Provides:
+ * 1. Safe triggerPlay & triggerSpectate invoking React components with { isTrusted: true }
+ *    via the Main World bridge (src/injected.js), guaranteeing 0 anti-tamper redirects.
+ * 2. Accurate hardware button alignment over the visual UI.
+ * 3. Bulletproof React input setters & profiles sync for nickname, tag, and skins.
+ * 4. Engine connection & handshake tracking.
  */
 
 import { SELECTORS, queryElement, queryElements } from './selectors.js';
 
 let isGameActive = false;
+let engineStatus = 'connecting';
 
 /**
  * Bulletproof setter for React-controlled <input> elements.
@@ -32,7 +36,32 @@ export function setNativeInputValue(inputEl, value) {
   inputEl.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
+/**
+ * Direct sync to Senpa's localStorage profiles
+ */
+export function syncProfileStorage({ nickname, tag, skinUrl }) {
+  try {
+    const raw = localStorage.getItem('senpaio:profiles');
+    let profiles = raw ? JSON.parse(raw) : { selected: 0, tag: '', list: [] };
+    if (!Array.isArray(profiles.list)) profiles.list = [];
+
+    const selected = Number(profiles.selected) || 0;
+    while (profiles.list.length <= selected) {
+      profiles.list.push({ nick: 'Player', skin1: '', skin2: '', hat1: 0, hat2: 0 });
+    }
+
+    if (nickname !== undefined) profiles.list[selected].nick = nickname;
+    if (tag !== undefined) profiles.tag = tag;
+    if (skinUrl !== undefined) profiles.list[selected].skin1 = skinUrl;
+
+    localStorage.setItem('senpaio:profiles', JSON.stringify(profiles));
+  } catch (e) {
+    console.warn('[SenpaMod Bridge] Failed syncing profiles to localStorage:', e);
+  }
+}
+
 export function syncNicknameToNative(nickname) {
+  syncProfileStorage({ nickname });
   const nativeInput = queryElement(SELECTORS.nativeNicknameInput);
   if (nativeInput) {
     setNativeInputValue(nativeInput, nickname);
@@ -42,6 +71,7 @@ export function syncNicknameToNative(nickname) {
 }
 
 export function syncClanTagToNative(tag) {
+  syncProfileStorage({ tag });
   const nativeTagInput = queryElement(SELECTORS.nativeTagInput);
   if (nativeTagInput) {
     setNativeInputValue(nativeTagInput, tag);
@@ -51,9 +81,43 @@ export function syncClanTagToNative(tag) {
 }
 
 /**
+ * Trigger Play safely without tripping CE.checkEvent anti-tamper redirect.
+ * Dispatches a custom event to the main-world bridge (src/injected.js)
+ * which calls React's onClick({ isTrusted: true }).
+ */
+export function triggerPlay() {
+  // Sync latest inputs
+  const nickInput = document.getElementById('delt-nick-input');
+  const tagInput = document.getElementById('delt-tag-input');
+  const skinInput = document.getElementById('delt-skin-url-input');
+
+  if (nickInput) syncNicknameToNative(nickInput.value);
+  if (tagInput) syncClanTagToNative(tagInput.value);
+  if (skinInput) syncProfileStorage({ skinUrl: skinInput.value });
+
+  // Dispatch main-world trigger event
+  window.dispatchEvent(new CustomEvent('delt-request-play'));
+
+  // Also call window.__senpaGameBridge if in same context
+  if (window.__senpaGameBridge && typeof window.__senpaGameBridge.triggerPlay === 'function') {
+    window.__senpaGameBridge.triggerPlay();
+  }
+}
+
+/**
+ * Trigger Spectate safely without tripping CE.checkEvent
+ */
+export function triggerSpectate() {
+  window.dispatchEvent(new CustomEvent('delt-request-spectate'));
+
+  if (window.__senpaGameBridge && typeof window.__senpaGameBridge.triggerSpectate === 'function') {
+    window.__senpaGameBridge.triggerSpectate();
+  }
+}
+
+/**
  * Aligns native #play and #spectate buttons directly over our visual custom buttons.
- * This ensures the user's click hits the native button with isTrusted: true,
- * completely neutralizing Senpa's anti-tamper YouTube redirect!
+ * When transform is disabled on .main-menu, position: fixed aligns 1:1 with viewport.
  */
 export function alignNativeButtons() {
   if (isGameActive) return;
@@ -77,6 +141,8 @@ export function alignNativeButtons() {
       nativePlay.style.visibility = 'visible';
       nativePlay.style.pointerEvents = 'auto';
       nativePlay.style.cursor = 'pointer';
+      nativePlay.style.transform = 'none';
+      nativePlay.style.margin = '0';
     }
   }
 
@@ -94,6 +160,8 @@ export function alignNativeButtons() {
       nativeSpectate.style.visibility = 'visible';
       nativeSpectate.style.pointerEvents = 'auto';
       nativeSpectate.style.cursor = 'pointer';
+      nativeSpectate.style.transform = 'none';
+      nativeSpectate.style.margin = '0';
     }
   }
 }
@@ -110,8 +178,6 @@ export function hideNativeButtons() {
 
 /**
  * Setup listeners on native buttons before they are clicked
- * @param {Function} onBeforeSpawn 
- * @param {Function} onSpawnComplete
  */
 export function hookNativeButtonEvents(onBeforeSpawn, onSpawnComplete) {
   const attach = () => {
@@ -120,7 +186,6 @@ export function hookNativeButtonEvents(onBeforeSpawn, onSpawnComplete) {
 
     if (nativePlay && !nativePlay.dataset.deltHooked) {
       nativePlay.dataset.deltHooked = 'true';
-      // Sync on mousedown / mouseenter so inputs are ready BEFORE click fires
       nativePlay.addEventListener('mousedown', () => {
         if (typeof onBeforeSpawn === 'function') onBeforeSpawn();
       });
@@ -155,66 +220,61 @@ export function hookNativeButtonEvents(onBeforeSpawn, onSpawnComplete) {
 }
 
 /**
- * Fallback click simulation
+ * Listen for engine connection status events from src/injected.js
  */
-export function clickNativePlay() {
-  const playBtn = queryElement(SELECTORS.nativePlayBtn);
-  if (playBtn) {
-    playBtn.click();
-    return true;
-  }
-  return false;
-}
-
-export function clickNativeSpectate() {
-  const spectateBtn = queryElement(SELECTORS.nativeSpectateBtn);
-  if (spectateBtn) {
-    spectateBtn.click();
-    return true;
-  }
-  return false;
-}
-
-export function getLiveServersFromNative() {
-  const rows = queryElements(SELECTORS.nativeServerRow);
-  const servers = [];
-
-  rows.forEach((row, index) => {
-    const nameEl = row.querySelector(SELECTORS.nativeServerName);
-    const playersEl = row.querySelector(SELECTORS.nativeServerPlayers);
-    const modeEl = row.querySelector(SELECTORS.nativeServerMode);
-
-    const name = nameEl ? nameEl.textContent.trim() : `Server ${index + 1}`;
-    const players = playersEl ? playersEl.textContent.trim() : '-/-';
-    const mode = modeEl ? modeEl.textContent.trim() : 'FFA';
-    const isActive = row.classList.contains('active');
-
-    servers.push({
-      name,
-      players,
-      mode,
-      isActive,
-      element: row
-    });
+export function listenEngineStatus(callback) {
+  window.addEventListener('delt-engine-status', (event) => {
+    if (event.detail && event.detail.status) {
+      engineStatus = event.detail.status;
+      if (typeof callback === 'function') {
+        callback(event.detail);
+      }
+    }
   });
-
-  return servers;
 }
 
-export function selectNativeServer(identifier) {
-  const servers = getLiveServersFromNative();
-  if (typeof identifier === 'number') {
-    if (servers[identifier] && servers[identifier].element) {
-      servers[identifier].element.click();
-      return true;
-    }
-  } else {
-    const match = servers.find(s => s.name.toLowerCase() === String(identifier).toLowerCase() || s.mode.toLowerCase() === String(identifier).toLowerCase());
-    if (match && match.element) {
-      match.element.click();
-      return true;
-    }
+export function getEngineStatus() {
+  return engineStatus;
+}
+
+/**
+ * Fetch live servers directly from Senpa API tracker
+ */
+export async function fetchLiveServers() {
+  try {
+    const res = await fetch('https://api.senpa.io/tracker');
+    if (!res.ok) throw new Error('Tracker HTTP ' + res.status);
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.warn('[SenpaMod Bridge] Failed fetching tracker servers:', err);
+    return [];
   }
+}
+
+/**
+ * Select server by host or mode
+ */
+export function selectNativeServer(hostOrMode) {
+  if (!hostOrMode) return;
+
+  try {
+    // 1. Save to localStorage so Senpa connects on reload / OT effect
+    localStorage.setItem('senpaio:server', hostOrMode);
+
+    // 2. Click matching native server row if available in DOM
+    const rows = document.querySelectorAll('.server-row');
+    for (const row of rows) {
+      const modeEl = row.querySelector('.server-mode');
+      const nameEl = row.querySelector('.server-name');
+      const text = `${nameEl ? nameEl.textContent : ''} ${modeEl ? modeEl.textContent : ''}`.toLowerCase();
+      if (text.includes(String(hostOrMode).toLowerCase())) {
+        row.click();
+        return true;
+      }
+    }
+  } catch (e) {}
+
   return false;
 }
 
@@ -232,7 +292,7 @@ export function setupGameLifecycleWatcher({ onDeathOrDisconnect, onGameStart, on
 
   const stateObserver = new MutationObserver(() => {
     const nativePlayBtn = queryElement(SELECTORS.nativePlayBtn);
-    const isMenuPresent = Boolean(nativePlayBtn);
+    const isMenuPresent = Boolean(nativePlayBtn && nativePlayBtn.offsetParent !== null);
 
     if (isGameActive && isMenuPresent) {
       isGameActive = false;

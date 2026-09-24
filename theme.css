@@ -30,14 +30,33 @@
 /* ==========================================================================
    1. TARGETING & CLEAN HIDING (Native Senpa.io Elements)
    ========================================================================== */
+/* Keep native engine containers mounted and functional so WebSocket & React state stay alive */
+.server-panel,
+#primary-inputs {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+}
+
+/* Cleanly hide all native ads, headers, and extraneous panels */
 #bottomBar,
 #gameadsbanner-container,
+#gameadsbanner,
+#banner_ad_bottom,
+#ad-slot-center-panel,
+#onesignal-slidedown-container,
+.adsbygoogle,
+.advertisement-informer,
+.advertisement-informer-endgame,
 .quick-panel,
 .account-panel,
 .social-panel,
 .support-panel,
-.server-panel,
-#primary-inputs,
 #settings-btn,
 .info-footer,
 .main-menu > .logo,
@@ -48,6 +67,7 @@
   pointer-events: none !important;
 }
 
+/* Prevent scale transformation on .main-menu so coordinates align accurately with viewport */
 #menu,
 .main-menu,
 .menu-area,
@@ -57,7 +77,13 @@
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  pointer-events: none !important;
+  transform: none !important;
+}
+
+/* Keep native action row transparent */
+.action-row {
+  border: none !important;
+  background: transparent !important;
 }
 
 /* ==========================================================================
@@ -498,6 +524,146 @@
   color: #0b0f19;
   border-color: var(--delt-accent);
   box-shadow: 0 4px 16px var(--delt-accent-glow);
+}
+
+/* Status indicator dot on Play button */
+.delt-play-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  display: inline-block;
+}
+
+.delt-play-status-dot.ready {
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+}
+
+.delt-play-status-dot.connecting {
+  background: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+  animation: deltPulse 1s infinite alternate;
+}
+
+@keyframes deltPulse {
+  from { opacity: 0.4; }
+  to { opacity: 1; }
+}
+
+/* Live Servers Modal Drawer */
+.delt-server-modal {
+  position: absolute;
+  inset: 40px 10px 10px 10px;
+  background: #181a1f;
+  border: 1px solid var(--delt-border);
+  border-radius: 6px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
+}
+
+.delt-server-modal.delt-hidden {
+  display: none !important;
+}
+
+.delt-server-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  border-bottom: 1px solid var(--delt-border);
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+.delt-server-modal-close {
+  background: transparent;
+  border: none;
+  color: #949ba4;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.delt-server-modal-close:hover {
+  color: #fff;
+}
+
+.delt-server-modal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.delt-server-loading {
+  font-size: 12px;
+  color: #949ba4;
+  text-align: center;
+  padding: 20px 0;
+}
+
+.delt-server-row-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #23252b;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.delt-server-row-item:hover {
+  background: #2b2d35;
+  border-color: var(--delt-accent-border);
+}
+
+.delt-server-info-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.delt-server-row-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.delt-server-row-sub {
+  font-size: 11px;
+  color: #949ba4;
+}
+
+.delt-server-meta-col {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.delt-server-badge-players {
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: #cbd5e1;
+}
+
+.delt-btn-server-connect {
+  background: var(--delt-accent);
+  color: #0b0f19;
+  border: none;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 3px;
+  cursor: pointer;
 }
 
 .delt-btn-row {

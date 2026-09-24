@@ -19,15 +19,33 @@ export function injectHiderStyle() {
   }
 
   styleEl.textContent = `
-    /* Cleanly hide all native ads, headers, inputs, and banners */
+    /* Keep native engine containers mounted and functional so WebSocket & React state stay alive */
+    .server-panel,
+    #primary-inputs {
+      opacity: 0 !important;
+      pointer-events: none !important;
+      position: absolute !important;
+      left: -9999px !important;
+      top: -9999px !important;
+      width: 1px !important;
+      height: 1px !important;
+      overflow: hidden !important;
+    }
+
+    /* Cleanly hide all native ads, headers, and extraneous panels */
     #bottomBar,
     #gameadsbanner-container,
+    #gameadsbanner,
+    #banner_ad_bottom,
+    #ad-slot-center-panel,
+    #onesignal-slidedown-container,
+    .adsbygoogle,
+    .advertisement-informer,
+    .advertisement-informer-endgame,
     .quick-panel,
     .account-panel,
     .social-panel,
     .support-panel,
-    .server-panel,
-    #primary-inputs,
     #settings-btn,
     .info-footer,
     .main-menu > .logo,
@@ -38,7 +56,7 @@ export function injectHiderStyle() {
       pointer-events: none !important;
     }
 
-    /* Make native menu background completely invisible so our custom UI shines */
+    /* Prevent scale transformation on .main-menu so coordinates align accurately with viewport */
     #menu,
     .main-menu,
     .menu-area,
@@ -48,7 +66,7 @@ export function injectHiderStyle() {
       background: transparent !important;
       border: none !important;
       box-shadow: none !important;
-      pointer-events: none !important;
+      transform: none !important;
     }
 
     /* Keep native action row transparent */
