@@ -1,0 +1,25 @@
+{
+  "name": "senpa-delt-ui",
+  "version": "1.0.0",
+  "description": "Sleek Delt.io-inspired dark glassmorphism pre-game UI mod for Senpa.io",
+  "main": "content.js",
+  "scripts": {
+    "dev": "extension dev",
+    "build": "extension build",
+    "start": "extension dev"
+  },
+  "keywords": [
+    "senpa-io",
+    "delt-io",
+    "browser-extension",
+    "glassmorphism",
+    "agar-mod",
+    "manifest-v3",
+    "extension-js"
+  ],
+  "author": "nasakib",
+  "license": "MIT",
+  "devDependencies": {
+    "extension": "^4.1.28"
+  }
+}

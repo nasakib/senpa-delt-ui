@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Builds & extension.js output
+dist/
+build/
+.extension/
+*.crx
+*.zip
+
+# OS and Editor files
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
+
+# Extension.js local session state
+.extension-js

@@ -1,0 +1,850 @@
+/**
+ * Delt.io-Inspired Theme Stylesheet for Senpa.io Mod
+ * 
+ * Features:
+ * - High-end dark glassmorphism (backdrop-filter blur, saturation, specular highlights)
+ * - Dynamic neon accent glows
+ * - Clean modern typography & pill controls
+ * - Hiding rules for Senpa.io native pre-game menu
+ */
+
+:root {
+  --delt-accent: #00f2fe;
+  --delt-accent-glow: rgba(0, 242, 254, 0.45);
+  --delt-accent-border: rgba(0, 242, 254, 0.65);
+  --delt-bg: rgba(11, 15, 25, var(--delt-bg-opacity, 0.82));
+  --delt-card-bg: rgba(18, 24, 38, 0.72);
+  --delt-border: rgba(255, 255, 255, 0.09);
+  --delt-text: #ffffff;
+  --delt-text-muted: #94a3b8;
+  --delt-blur: 18px;
+  --delt-radius: 14px;
+  --delt-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* ==========================================================================
+   1. TARGETING & CLEAN HIDING (Native Senpa.io Elements)
+   ========================================================================== */
+#menu,
+.main-menu,
+.menu-area,
+#bottomBar,
+#gameadsbanner-container,
+.play-panel,
+.quick-panel,
+.account-panel,
+.support-panel,
+.social-panel {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* ==========================================================================
+   2. DELT.IO GLASSMORPHIC MENU OVERLAY (#delt-menu-container)
+   ========================================================================== */
+.delt-overlay-wrapper {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 999999 !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  pointer-events: auto !important;
+  background: radial-gradient(circle at center, rgba(10, 14, 23, 0.6) 0%, rgba(5, 7, 12, 0.85) 100%) !important;
+  animation: deltFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  user-select: none !important;
+  font-family: var(--delt-font) !important;
+}
+
+.delt-overlay-wrapper.delt-hidden {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+/* Central Card */
+.delt-glass-card {
+  position: relative;
+  width: 90%;
+  max-width: 520px;
+  background: var(--delt-bg);
+  backdrop-filter: blur(var(--delt-blur)) saturate(190%);
+  -webkit-backdrop-filter: blur(var(--delt-blur)) saturate(190%);
+  border: 1px solid var(--delt-border);
+  border-radius: var(--delt-radius);
+  box-shadow: 
+    0 24px 60px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 0 45px var(--delt-accent-glow);
+  padding: 24px;
+  color: var(--delt-text);
+  overflow: hidden;
+  box-sizing: border-box;
+  animation: deltPopIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Ambient glow accent in card corner */
+.delt-card-glow {
+  position: absolute;
+  top: -80px;
+  right: -80px;
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, var(--delt-accent-glow) 0%, transparent 70%);
+  opacity: 0.6;
+  pointer-events: none;
+  filter: blur(20px);
+}
+
+/* ==========================================================================
+   3. HEADER & BRANDING
+   ========================================================================== */
+.delt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.delt-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.delt-logo-badge {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, var(--delt-accent), rgba(255, 255, 255, 0.2));
+  border-radius: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 20px;
+  font-weight: 900;
+  color: #0b0f19;
+  box-shadow: 0 0 15px var(--delt-accent-glow);
+}
+
+.delt-title-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.delt-title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  line-height: 1.1;
+  color: #fff;
+}
+
+.delt-accent-text {
+  color: var(--delt-accent);
+  text-shadow: 0 0 10px var(--delt-accent-glow);
+}
+
+.delt-subtitle {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: var(--delt-text-muted);
+}
+
+.delt-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.delt-status-pill {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.12);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  padding: 4px 10px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.delt-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 8px #4ade80;
+}
+
+.delt-icon-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--delt-border);
+  color: var(--delt-text-muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.delt-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+/* ==========================================================================
+   4. TAB BAR
+   ========================================================================== */
+.delt-tab-bar {
+  display: flex;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--delt-border);
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 22px;
+  gap: 4px;
+}
+
+.delt-tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--delt-text-muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.delt-tab-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.delt-tab-btn.active {
+  color: #0b0f19;
+  background: var(--delt-accent);
+  box-shadow: 0 2px 10px var(--delt-accent-glow);
+  font-weight: 700;
+}
+
+.delt-tab-icon {
+  font-size: 12px;
+}
+
+/* ==========================================================================
+   5. TAB PANES & FORM CONTROLS
+   ========================================================================== */
+.delt-tab-pane {
+  display: none;
+  flex-direction: column;
+  gap: 16px;
+  animation: deltFadeIn 0.2s ease;
+}
+
+.delt-tab-pane.active {
+  display: flex;
+}
+
+/* Input Rows */
+.delt-input-group {
+  display: flex;
+  gap: 12px;
+}
+
+.delt-input-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.delt-tag-wrap {
+  width: 90px;
+  flex-shrink: 0;
+}
+
+.delt-nick-wrap {
+  flex: 1;
+}
+
+.delt-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: var(--delt-text-muted);
+}
+
+.delt-input {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  height: 44px !important;
+  background: rgba(0, 0, 0, 0.4) !important;
+  border: 1px solid var(--delt-border) !important;
+  border-radius: 8px !important;
+  color: #fff !important;
+  font-family: inherit !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  padding: 0 14px !important;
+  outline: none !important;
+  transition: border-color 0.2s, box-shadow 0.2s !important;
+}
+
+.delt-tag-wrap .delt-input {
+  text-align: center !important;
+  text-transform: uppercase !important;
+}
+
+.delt-input:focus {
+  border-color: var(--delt-accent) !important;
+  box-shadow: 0 0 12px var(--delt-accent-glow) !important;
+}
+
+.delt-input::placeholder {
+  color: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Select Dropdown */
+.delt-field-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.delt-select-wrap {
+  position: relative;
+}
+
+.delt-select {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  height: 42px !important;
+  background: rgba(0, 0, 0, 0.4) !important;
+  border: 1px solid var(--delt-border) !important;
+  border-radius: 8px !important;
+  color: #fff !important;
+  font-family: inherit !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  padding: 0 14px !important;
+  outline: none !important;
+  cursor: pointer !important;
+  appearance: none !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 14px center !important;
+}
+
+.delt-select option {
+  background: #111726;
+  color: #fff;
+}
+
+/* ==========================================================================
+   6. ACTION BUTTONS (PLAY & SPECTATE)
+   ========================================================================== */
+.delt-actions-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.delt-btn {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+/* Giant Play / Spawn Button */
+.delt-btn-play {
+  flex: 2;
+  height: 52px;
+  background: linear-gradient(135deg, var(--delt-accent) 0%, #2563eb 100%);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 24px var(--delt-accent-glow);
+}
+
+.delt-btn-play:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px var(--delt-accent-glow);
+  filter: brightness(1.1);
+}
+
+.delt-btn-play:active {
+  transform: translateY(0);
+}
+
+.delt-play-glow {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: translateX(-100%);
+  animation: deltShine 3s infinite;
+}
+
+.delt-btn-spectate {
+  flex: 1;
+  height: 52px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--delt-border);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+}
+
+.delt-btn-spectate:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.delt-pane-footer {
+  text-align: center;
+  margin-top: 4px;
+}
+
+.delt-hint {
+  font-size: 11px;
+  color: var(--delt-text-muted);
+}
+
+kbd {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-family: inherit;
+  color: #fff;
+}
+
+/* ==========================================================================
+   7. SETTINGS PANEL CONTROLS
+   ========================================================================== */
+.delt-setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--delt-border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  gap: 12px;
+}
+
+.delt-setting-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.delt-setting-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.delt-setting-desc {
+  font-size: 11px;
+  color: var(--delt-text-muted);
+}
+
+/* Color Swatches */
+.delt-color-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.delt-swatches {
+  display: flex;
+  gap: 6px;
+}
+
+.delt-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.delt-swatch:hover {
+  transform: scale(1.2);
+}
+
+.delt-swatch.active {
+  border-color: #fff;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.delt-color-input {
+  -webkit-appearance: none;
+  border: 1px solid var(--delt-border);
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  background: transparent;
+  padding: 0;
+}
+
+.delt-color-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.delt-color-input::-webkit-color-swatch {
+  border: none;
+  border-radius: 5px;
+}
+
+/* Setting Controls Group */
+.delt-setting-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Switch Toggle */
+.delt-switch {
+  position: relative;
+  display: inline-block;
+  width: 38px;
+  height: 22px;
+}
+
+.delt-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.delt-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 22px;
+  transition: 0.25s;
+}
+
+.delt-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: 0.25s;
+}
+
+input:checked + .delt-slider {
+  background: var(--delt-accent);
+}
+
+input:checked + .delt-slider:before {
+  transform: translateX(16px);
+  background: #0b0f19;
+}
+
+/* Segmented Pill Buttons */
+.delt-pill-select {
+  display: flex;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--delt-border);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.delt-pill-btn {
+  background: transparent;
+  border: none;
+  color: var(--delt-text-muted);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.delt-pill-btn.active {
+  background: var(--delt-accent);
+  color: #0b0f19;
+  font-weight: 700;
+}
+
+/* Sliders */
+.delt-range {
+  width: 120px;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.15);
+  height: 5px;
+  border-radius: 5px;
+  outline: none;
+}
+
+.delt-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--delt-accent);
+  cursor: pointer;
+  box-shadow: 0 0 6px var(--delt-accent-glow);
+}
+
+.delt-settings-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.delt-btn-text {
+  background: transparent;
+  border: none;
+  color: var(--delt-text-muted);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.delt-btn-text:hover {
+  color: #f87171;
+}
+
+/* ==========================================================================
+   8. CONTROLS TAB
+   ========================================================================== */
+.delt-controls-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.delt-key-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--delt-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.delt-kbd {
+  min-width: 50px;
+  text-align: center;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.delt-key-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.delt-key-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.delt-key-desc {
+  font-size: 10px;
+  color: var(--delt-text-muted);
+}
+
+/* ==========================================================================
+   9. SERVERS TAB
+   ========================================================================== */
+.delt-server-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: var(--delt-text-muted);
+}
+
+.delt-refresh-btn {
+  background: transparent;
+  border: none;
+  color: var(--delt-accent);
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.delt-server-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 230px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.delt-server-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.delt-server-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+.delt-server-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--delt-border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.delt-server-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.delt-server-card.active {
+  border-color: var(--delt-accent);
+  box-shadow: 0 0 10px var(--delt-accent-glow);
+}
+
+.delt-server-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.delt-srv-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.delt-srv-mode {
+  font-size: 11px;
+  color: var(--delt-accent);
+  text-transform: uppercase;
+}
+
+.delt-server-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.delt-srv-players {
+  font-size: 12px;
+  color: var(--delt-text-muted);
+}
+
+.delt-srv-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+.delt-server-placeholder {
+  text-align: center;
+  padding: 30px 10px;
+  color: var(--delt-text-muted);
+  font-size: 12px;
+}
+
+/* ==========================================================================
+   10. FLOATING QUICK-TOGGLE FAB (In-Game Menu Re-opener)
+   ========================================================================== */
+.delt-fab {
+  position: fixed !important;
+  bottom: 20px !important;
+  left: 20px !important;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 50% !important;
+  background: var(--delt-bg) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border: 1px solid var(--delt-border) !important;
+  color: var(--delt-accent) !important;
+  font-size: 20px !important;
+  font-weight: 900 !important;
+  display: none;
+  justify-content: center !important;
+  align-items: center !important;
+  cursor: pointer !important;
+  z-index: 99999 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 12px var(--delt-accent-glow) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.delt-fab:hover {
+  transform: scale(1.12) !important;
+  border-color: var(--delt-accent) !important;
+}
+
+/* ==========================================================================
+   11. ANIMATIONS
+   ========================================================================== */
+@keyframes deltFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes deltPopIn {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes deltShine {
+  0% { transform: translateX(-100%); }
+  20% { transform: translateX(100%); }
+  100% { transform: translateX(100%); }
+}

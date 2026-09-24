@@ -1,0 +1,183 @@
+body {
+  margin: 0;
+  padding: 0;
+  width: 250px;
+  background: #0d111a;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  user-select: none;
+}
+
+.popup-container {
+  padding: 16px;
+}
+
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.popup-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.popup-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #00f2fe;
+  color: #0b0f19;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: 900;
+  font-size: 16px;
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
+}
+
+.popup-title {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.popup-accent {
+  color: #00f2fe;
+}
+
+.popup-version {
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.popup-badge {
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #94a3b8;
+}
+
+.popup-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.popup-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.popup-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.popup-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #94a3b8;
+}
+
+.popup-swatches {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.popup-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.popup-swatch:hover {
+  transform: scale(1.15);
+}
+
+.popup-swatch.active {
+  border-color: #fff;
+}
+
+.popup-switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+}
+
+.popup-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.popup-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  transition: 0.2s;
+}
+
+.popup-slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: 0.2s;
+}
+
+input:checked + .popup-slider {
+  background: #00f2fe;
+}
+
+input:checked + .popup-slider:before {
+  transform: translateX(16px);
+  background: #0b0f19;
+}
+
+.popup-play-link {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #00f2fe, #2563eb);
+  color: #fff;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 242, 254, 0.3);
+  transition: opacity 0.15s;
+}
+
+.popup-play-link:hover {
+  opacity: 0.9;
+}
+
+.popup-footer {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 10px;
+  color: #64748b;
+}
