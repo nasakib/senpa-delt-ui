@@ -1,19 +1,17 @@
 /**
- * Bridge Module between Delt.io Mod Menu and Native Senpa.io Game Engine
+ * Bridge Module between Custom Menu and Senpa.io Game Engine
  * 
- * Handles syncing nicknames, tag, button clicks, server selection,
- * and game state events (play, death, disconnect, menu toggle).
+ * Solves the anti-tamper redirect (CE.checkEvent / isTrusted) by aligning
+ * Senpa's native #play and #spectate buttons directly over our custom UI buttons,
+ * ensuring all clicks are 100% genuine browser hardware events with isTrusted: true!
  */
 
 import { SELECTORS, queryElement, queryElements } from './selectors.js';
 
+let isGameActive = false;
+
 /**
  * Bulletproof setter for React-controlled <input> elements.
- * Overcomes React's internal synthetic event interception by invoking
- * HTMLInputElement.prototype setter directly before dispatching bubbling events.
- * 
- * @param {HTMLInputElement} inputEl 
- * @param {string} value 
  */
 export function setNativeInputValue(inputEl, value) {
   if (!inputEl) return;
@@ -30,16 +28,10 @@ export function setNativeInputValue(inputEl, value) {
     inputEl.value = value;
   }
 
-  // Dispatch standard bubbling input & change events
   inputEl.dispatchEvent(new Event('input', { bubbles: true }));
   inputEl.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
-/**
- * Synchronize nickname from Delt menu to native Senpa input
- * @param {string} nickname 
- * @returns {boolean} Success status
- */
 export function syncNicknameToNative(nickname) {
   const nativeInput = queryElement(SELECTORS.nativeNicknameInput);
   if (nativeInput) {
@@ -49,11 +41,6 @@ export function syncNicknameToNative(nickname) {
   return false;
 }
 
-/**
- * Synchronize clan tag from Delt menu to native Senpa tag input
- * @param {string} tag 
- * @returns {boolean} Success status
- */
 export function syncClanTagToNative(tag) {
   const nativeTagInput = queryElement(SELECTORS.nativeTagInput);
   if (nativeTagInput) {
@@ -64,40 +51,130 @@ export function syncClanTagToNative(tag) {
 }
 
 /**
- * Simulate clicking the native Senpa Play button
- * @returns {boolean} Success status
+ * Aligns native #play and #spectate buttons directly over our visual custom buttons.
+ * This ensures the user's click hits the native button with isTrusted: true,
+ * completely neutralizing Senpa's anti-tamper YouTube redirect!
+ */
+export function alignNativeButtons() {
+  if (isGameActive) return;
+
+  const nativePlay = document.getElementById('play');
+  const nativeSpectate = document.getElementById('spectate');
+  const playTarget = document.getElementById('delt-play-target');
+  const spectateTarget = document.getElementById('delt-spectate-target');
+
+  if (nativePlay && playTarget) {
+    const rect = playTarget.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      nativePlay.style.position = 'fixed';
+      nativePlay.style.left = `${rect.left}px`;
+      nativePlay.style.top = `${rect.top}px`;
+      nativePlay.style.width = `${rect.width}px`;
+      nativePlay.style.height = `${rect.height}px`;
+      nativePlay.style.opacity = '0.001';
+      nativePlay.style.zIndex = '9999999';
+      nativePlay.style.display = 'block';
+      nativePlay.style.visibility = 'visible';
+      nativePlay.style.pointerEvents = 'auto';
+      nativePlay.style.cursor = 'pointer';
+    }
+  }
+
+  if (nativeSpectate && spectateTarget) {
+    const rect = spectateTarget.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      nativeSpectate.style.position = 'fixed';
+      nativeSpectate.style.left = `${rect.left}px`;
+      nativeSpectate.style.top = `${rect.top}px`;
+      nativeSpectate.style.width = `${rect.width}px`;
+      nativeSpectate.style.height = `${rect.height}px`;
+      nativeSpectate.style.opacity = '0.001';
+      nativeSpectate.style.zIndex = '9999999';
+      nativeSpectate.style.display = 'block';
+      nativeSpectate.style.visibility = 'visible';
+      nativeSpectate.style.pointerEvents = 'auto';
+      nativeSpectate.style.cursor = 'pointer';
+    }
+  }
+}
+
+/**
+ * Hides the native buttons so they don't intercept pointer events on the game canvas
+ */
+export function hideNativeButtons() {
+  const nativePlay = document.getElementById('play');
+  const nativeSpectate = document.getElementById('spectate');
+  if (nativePlay) nativePlay.style.display = 'none';
+  if (nativeSpectate) nativeSpectate.style.display = 'none';
+}
+
+/**
+ * Setup listeners on native buttons before they are clicked
+ * @param {Function} onBeforeSpawn 
+ * @param {Function} onSpawnComplete
+ */
+export function hookNativeButtonEvents(onBeforeSpawn, onSpawnComplete) {
+  const attach = () => {
+    const nativePlay = document.getElementById('play');
+    const nativeSpectate = document.getElementById('spectate');
+
+    if (nativePlay && !nativePlay.dataset.deltHooked) {
+      nativePlay.dataset.deltHooked = 'true';
+      // Sync on mousedown / mouseenter so inputs are ready BEFORE click fires
+      nativePlay.addEventListener('mousedown', () => {
+        if (typeof onBeforeSpawn === 'function') onBeforeSpawn();
+      });
+      nativePlay.addEventListener('mouseenter', () => {
+        if (typeof onBeforeSpawn === 'function') onBeforeSpawn();
+      });
+      nativePlay.addEventListener('click', () => {
+        isGameActive = true;
+        hideNativeButtons();
+        if (typeof onSpawnComplete === 'function') onSpawnComplete();
+      });
+    }
+
+    if (nativeSpectate && !nativeSpectate.dataset.deltHooked) {
+      nativeSpectate.dataset.deltHooked = 'true';
+      nativeSpectate.addEventListener('mousedown', () => {
+        if (typeof onBeforeSpawn === 'function') onBeforeSpawn();
+      });
+      nativeSpectate.addEventListener('click', () => {
+        isGameActive = true;
+        hideNativeButtons();
+        if (typeof onSpawnComplete === 'function') onSpawnComplete();
+      });
+    }
+  };
+
+  attach();
+  setInterval(attach, 1000);
+
+  window.addEventListener('resize', alignNativeButtons);
+  window.addEventListener('scroll', alignNativeButtons);
+}
+
+/**
+ * Fallback click simulation
  */
 export function clickNativePlay() {
   const playBtn = queryElement(SELECTORS.nativePlayBtn);
   if (playBtn) {
-    // Simulate natural mouse sequence for full React synthetic event compatibility
-    playBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
-    playBtn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window }));
     playBtn.click();
     return true;
   }
   return false;
 }
 
-/**
- * Simulate clicking the native Senpa Spectate button
- * @returns {boolean} Success status
- */
 export function clickNativeSpectate() {
   const spectateBtn = queryElement(SELECTORS.nativeSpectateBtn);
   if (spectateBtn) {
-    spectateBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
-    spectateBtn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window }));
     spectateBtn.click();
     return true;
   }
   return false;
 }
 
-/**
- * Scrapes live servers available in the native Senpa UI
- * @returns {Array<{name: string, players: string, mode: string, isActive: boolean, element: HTMLElement}>}
- */
 export function getLiveServersFromNative() {
   const rows = queryElements(SELECTORS.nativeServerRow);
   const servers = [];
@@ -124,10 +201,6 @@ export function getLiveServersFromNative() {
   return servers;
 }
 
-/**
- * Selects a server in Senpa by clicking its native row
- * @param {string|number} identifier Server name or index
- */
 export function selectNativeServer(identifier) {
   const servers = getLiveServersFromNative();
   if (typeof identifier === 'number') {
@@ -145,22 +218,9 @@ export function selectNativeServer(identifier) {
   return false;
 }
 
-/**
- * Listens for game lifecycle events (death, disconnect, game start, menu requests).
- * Automatically re-shows the Delt overlay when player dies.
- * 
- * @param {Object} callbacks
- * @param {Function} callbacks.onDeathOrDisconnect Triggered when player dies or returns to menu
- * @param {Function} callbacks.onGameStart Triggered when play button succeeds and game starts
- * @param {Function} callbacks.onToggleMenu Triggered when user presses Escape or hotkey
- */
 export function setupGameLifecycleWatcher({ onDeathOrDisconnect, onGameStart, onToggleMenu }) {
-  let wasInGame = false;
-
-  // Keydown listener for quick Escape menu toggle
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      // Don't toggle if user is typing in an input
       if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
         return;
       }
@@ -170,17 +230,12 @@ export function setupGameLifecycleWatcher({ onDeathOrDisconnect, onGameStart, on
     }
   });
 
-  // Watch for DOM changes indicating transition between menu and game
   const stateObserver = new MutationObserver(() => {
     const nativePlayBtn = queryElement(SELECTORS.nativePlayBtn);
-    const nativeMenu = queryElement(SELECTORS.nativeMenu);
-    const hud = queryElement(SELECTORS.nativeHud);
+    const isMenuPresent = Boolean(nativePlayBtn);
 
-    // If native play button or menu is attached and was previously in-game -> player died/disconnected!
-    const isMenuPresent = Boolean(nativePlayBtn || nativeMenu);
-
-    if (wasInGame && isMenuPresent) {
-      wasInGame = false;
+    if (isGameActive && isMenuPresent) {
+      isGameActive = false;
       if (typeof onDeathOrDisconnect === 'function') {
         onDeathOrDisconnect();
       }
@@ -189,20 +244,20 @@ export function setupGameLifecycleWatcher({ onDeathOrDisconnect, onGameStart, on
 
   stateObserver.observe(document.documentElement, {
     childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ['style', 'class']
+    subtree: true
   });
 
   return {
     notifyGameStarted: () => {
-      wasInGame = true;
+      isGameActive = true;
+      hideNativeButtons();
       if (typeof onGameStart === 'function') {
         onGameStart();
       }
     },
     notifyInGame: (inGame) => {
-      wasInGame = inGame;
+      isGameActive = inGame;
+      if (inGame) hideNativeButtons();
     }
   };
 }

@@ -5,18 +5,7 @@
  * with transparent chrome.storage.local and localStorage redundancy.
  */
 
-export const DEFAULT_PRESET_SKINS = [
-  'https://i.imgur.com/zc2juAo.png',
-  'https://i.imgur.com/o7b8K7R.png',
-  'https://i.imgur.com/83pA8Vq.png',
-  'https://i.imgur.com/W2CvdY5.png',
-  'https://i.imgur.com/rN9yq3H.png',
-  'https://i.imgur.com/g8uXhC2.png',
-  'https://i.imgur.com/tH3ZkM7.png',
-  'https://i.imgur.com/K1Lg5nQ.png',
-  'https://i.imgur.com/qE4JzF2.png',
-  'https://i.imgur.com/yV9nL2x.png'
-];
+import { DEFAULT_ORBITAL_SKINS } from './skinPresets.js';
 
 export const AVAILABLE_FONTS = [
   { name: 'Rajdhani (Default)', value: 'Rajdhani, sans-serif' },
@@ -32,8 +21,8 @@ export const AVAILABLE_FONTS = [
 export const DEFAULT_SETTINGS = {
   nickname: 'SenpaPlayer',
   clanTag: '',
-  activeSkinUrl: 'https://i.imgur.com/zc2juAo.png',
-  recentSkins: DEFAULT_PRESET_SKINS,
+  activeSkinUrl: DEFAULT_ORBITAL_SKINS[0].url,
+  recentSkins: DEFAULT_ORBITAL_SKINS.map(s => s.url),
   hideEnemySkins: false,
   gameFont: 'Rajdhani, sans-serif',
   menuBgColor: '#18191c',
@@ -42,7 +31,7 @@ export const DEFAULT_SETTINGS = {
   showGrid: true,
   canvasTheme: 'dark', // 'dark', 'amoled', 'light'
   blurIntensity: 16,
-  menuOpacity: 92,
+  menuOpacity: 94,
   selectedMode: 'FFA',
   selectedServer: '',
   partyToken: '',
@@ -50,7 +39,7 @@ export const DEFAULT_SETTINGS = {
   modEnabled: true
 };
 
-const STORAGE_KEY = 'senpa_custom_mod_settings_v2';
+const STORAGE_KEY = 'senpa_custom_mod_settings_v3';
 
 function hasChromeStorage() {
   return typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local;

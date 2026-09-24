@@ -1,16 +1,12 @@
 /**
  * Senpa.io Enhanced Mod - Main Content Script Entry Point
  * 
- * Features:
- * 1. Clean hiding of default Senpa.io pre-game containers
- * 2. Modern compact UI resembling the user's provided screenshot
- * 3. Orbital skin carousel with active skin preview & native profile sync
- * 4. Chat player mute system & interactive emoji picker
- * 5. Leaderboard click-to-spectate and automatic #1 player spectate button (with 👑 crown)
- * 6. Dynamic menu color & accent customizer
- * 7. Enemy skins toggle switch
- * 8. Font selector applied across menu, leaderboard, minimap, and chat
- * 9. Direct access to native Senpa settings modal so NO original features are lost
+ * Neutralizes anti-tamper YouTube redirects and coordinates:
+ * - Orbital skin carousel with 12 built-in SVG skins
+ * - Direct native button docking for 100% trusted clicks
+ * - Chat player muting & emoji launcher
+ * - Leaderboard #1 crown & click-to-spectate
+ * - Custom fonts & menu theme customization
  */
 
 import { SELECTORS } from './src/selectors.js';
@@ -19,10 +15,11 @@ import { startNativeMenuWatcher, injectHiderStyle } from './src/hider.js';
 import {
   syncNicknameToNative,
   syncClanTagToNative,
-  clickNativePlay,
-  clickNativeSpectate,
   selectNativeServer,
-  setupGameLifecycleWatcher
+  setupGameLifecycleWatcher,
+  alignNativeButtons,
+  hookNativeButtonEvents,
+  hideNativeButtons
 } from './src/bridge.js';
 import { applyTheme } from './src/settings.js';
 import {
@@ -33,32 +30,29 @@ import {
 } from './src/ui.js';
 import { setNativeActiveSkin, getNativeActiveSkin } from './src/skins.js';
 import { initChatEnhancements } from './src/chat.js';
-import { initLeaderboardEnhancements, spectateTopPlayer } from './src/leaderboard.js';
+import { initLeaderboardEnhancements } from './src/leaderboard.js';
 
-console.log('[SenpaMod] Initializing Senpa Mod...');
+console.log('[SenpaMod] Initializing Senpa Mod v2.1 (Anti-Redirect & Skins Fix)...');
 
-// 1. Immediately inject hiding CSS to eliminate FOUC
+// 1. Immediately inject hiding CSS
 injectHiderStyle();
 
 async function init() {
   const settings = await getSettings();
 
-  // If a native skin is already set in Senpa, use it
   const nativeSkin = getNativeActiveSkin();
   if (nativeSkin && !settings.activeSkinUrl) {
     settings.activeSkinUrl = nativeSkin;
   }
 
-  // Apply visual theme (menu background color, accent, font, grid, canvas filter)
+  // Apply theme & fonts
   applyTheme(settings);
 
-  // Initialize Chat Enhancements (Mute system & Emoji launcher)
+  // Initialize chat & leaderboard
   initChatEnhancements();
-
-  // Initialize Leaderboard Enhancements (Click-to-spectate & #1 crown)
   initLeaderboardEnhancements();
 
-  // Build the complete UI
+  // Create UI
   createDeltMenu({
     settings,
     onNicknameChange: (val) => {
@@ -73,38 +67,10 @@ async function init() {
       saveSettings({ activeSkinUrl: url });
       setNativeActiveSkin(url);
     },
-    onPlay: () => {
-      // Sync latest values
-      const nickInput = document.getElementById('delt-nick-input');
-      const tagInput = document.getElementById('delt-tag-input');
-      const skinInput = document.getElementById('delt-skin-url-input');
-
-      if (nickInput) syncNicknameToNative(nickInput.value);
-      if (tagInput) syncClanTagToNative(tagInput.value);
-      if (skinInput && skinInput.value) setNativeActiveSkin(skinInput.value);
-
-      const success = clickNativePlay();
-      if (success) {
-        hideDeltMenu();
-        lifecycle.notifyGameStarted();
-      } else {
-        setTimeout(() => {
-          if (clickNativePlay()) {
-            hideDeltMenu();
-            lifecycle.notifyGameStarted();
-          }
-        }, 200);
-      }
-    },
-    onSpectate: () => {
-      if (clickNativeSpectate()) {
-        hideDeltMenu();
-        lifecycle.notifyGameStarted();
-      }
-    },
     onSettingChange: (partial) => {
       saveSettings(partial).then(updated => {
         applyTheme(updated);
+        alignNativeButtons();
       });
     },
     onResetSettings: async () => {
@@ -117,12 +83,34 @@ async function init() {
     }
   });
 
-  // Setup Game Lifecycle Watcher (Death, Disconnect, Hotkeys)
+  function syncAll() {
+    const nickInput = document.getElementById('delt-nick-input');
+    const tagInput = document.getElementById('delt-tag-input');
+    const skinInput = document.getElementById('delt-skin-url-input');
+
+    if (nickInput && nickInput.value) syncNicknameToNative(nickInput.value);
+    if (tagInput && tagInput.value) syncClanTagToNative(tagInput.value);
+    if (skinInput && skinInput.value) setNativeActiveSkin(skinInput.value);
+  }
+
+  // Hook native #play and #spectate buttons to ensure inputs are synced before click
+  hookNativeButtonEvents(
+    () => {
+      syncAll();
+    },
+    () => {
+      hideDeltMenu();
+      lifecycle.notifyGameStarted();
+    }
+  );
+
+  // Setup Lifecycle watcher
   const lifecycle = setupGameLifecycleWatcher({
     onDeathOrDisconnect: () => {
       console.log('[SenpaMod] Player died or returned to menu. Showing mod UI...');
       showDeltMenu();
-      syncInputs();
+      syncAll();
+      setTimeout(alignNativeButtons, 100);
     },
     onGameStart: () => {
       console.log('[SenpaMod] Game started. Hiding menu...');
@@ -133,26 +121,18 @@ async function init() {
     }
   });
 
-  // Keep native menu hidden in the background
+  // Keep native menu elements hidden while keeping #play and #spectate aligned
   startNativeMenuWatcher(() => {
-    syncInputs();
+    syncAll();
+    alignNativeButtons();
   });
 
-  function syncInputs() {
-    if (settings.nickname) syncNicknameToNative(settings.nickname);
-    if (settings.clanTag) syncClanTagToNative(settings.clanTag);
-    if (settings.activeSkinUrl) setNativeActiveSkin(settings.activeSkinUrl);
-  }
-
-  // Initial sync
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', syncInputs);
-  } else {
-    syncInputs();
-  }
+  // Initial alignment
+  setTimeout(alignNativeButtons, 200);
+  setTimeout(alignNativeButtons, 600);
+  setTimeout(alignNativeButtons, 1500);
 }
 
-// Start
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init, { once: true });
 } else {

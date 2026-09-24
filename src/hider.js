@@ -1,94 +1,87 @@
 /**
  * Targeting & Clean Hiding Module for Senpa.io Native Menu
  * 
- * Hides the native menu containers cleanly via CSS without removing
- * them from the DOM, keeping all internal React state, listeners, and
- * references intact.
+ * Hides all native ads, banners, inputs, and footers while allowing
+ * #play and #spectate to be cleanly aligned over our custom UI buttons.
  */
 
-import { SELECTORS, queryElements } from './selectors.js';
+import { SELECTORS } from './selectors.js';
 
 let hiderObserver = null;
 let isHiding = true;
 
-/**
- * Injects or updates the CSS rule that hides the native Senpa menu.
- */
 export function injectHiderStyle() {
   let styleEl = document.getElementById(SELECTORS.modHiderStyleId);
   if (!styleEl) {
     styleEl = document.createElement('style');
     styleEl.id = SELECTORS.modHiderStyleId;
-    // Append to document head or root immediately
     (document.head || document.documentElement).appendChild(styleEl);
   }
 
-  const selectorList = SELECTORS.nativeMenuContainers.join(',\n');
   styleEl.textContent = `
-    /* Hides native Senpa.io pre-game menu without destroying DOM listeners */
-    ${selectorList} {
+    /* Cleanly hide all native ads, headers, inputs, and banners */
+    #bottomBar,
+    #gameadsbanner-container,
+    .quick-panel,
+    .account-panel,
+    .social-panel,
+    .support-panel,
+    .server-panel,
+    #primary-inputs,
+    #settings-btn,
+    .info-footer,
+    .main-menu > .logo,
+    .Home_playContainer__1bzNp,
+    .Home_appsContainer__14QHs {
       display: none !important;
       visibility: hidden !important;
       pointer-events: none !important;
     }
+
+    /* Make native menu background completely invisible so our custom UI shines */
+    #menu,
+    .main-menu,
+    .menu-area,
+    .menu-columns,
+    .menu-col,
+    .play-panel {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      pointer-events: none !important;
+    }
+
+    /* Keep native action row transparent */
+    .action-row {
+      border: none !important;
+      background: transparent !important;
+    }
   `;
 }
 
-/**
- * Removes the hider CSS to temporarily reveal native UI (e.g., if mod is disabled)
- */
 export function removeHiderStyle() {
   const styleEl = document.getElementById(SELECTORS.modHiderStyleId);
-  if (styleEl) {
-    styleEl.remove();
-  }
+  if (styleEl) styleEl.remove();
 }
 
-/**
- * Starts a MutationObserver to continuously ensure native menus stay cleanly hidden
- * as React mounts, unmounts, or re-renders them.
- * 
- * @param {Function} [onNativeMenuDetected] Optional callback triggered when native menu is mounted
- */
 export function startNativeMenuWatcher(onNativeMenuDetected) {
-  // Ensure the CSS hider rule is present immediately
   injectHiderStyle();
 
-  if (hiderObserver) {
-    hiderObserver.disconnect();
-  }
+  if (hiderObserver) hiderObserver.disconnect();
 
   const checkElements = () => {
     if (!isHiding) return;
-    
-    // Confirm style tag is still in DOM (in case Senpa clears or re-renders head)
     if (!document.getElementById(SELECTORS.modHiderStyleId)) {
       injectHiderStyle();
     }
-
-    // Check if native menu elements exist in DOM
-    const nativeMenu = document.querySelector(SELECTORS.nativeMenu) || 
-                       document.querySelector(SELECTORS.nativeMainMenu);
-
+    const nativeMenu = document.querySelector('#menu') || document.querySelector('.main-menu');
     if (nativeMenu && typeof onNativeMenuDetected === 'function') {
       onNativeMenuDetected(nativeMenu);
     }
   };
 
-  hiderObserver = new MutationObserver((mutations) => {
-    let shouldCheck = false;
-    for (const m of mutations) {
-      if (m.type === 'childList' && (m.addedNodes.length > 0 || m.removedNodes.length > 0)) {
-        shouldCheck = true;
-        break;
-      }
-    }
-    if (shouldCheck) {
-      checkElements();
-    }
-  });
+  hiderObserver = new MutationObserver(() => checkElements());
 
-  // Observe root immediately
   const targetNode = document.documentElement || document.body;
   if (targetNode) {
     hiderObserver.observe(targetNode, {
@@ -97,7 +90,6 @@ export function startNativeMenuWatcher(onNativeMenuDetected) {
     });
   }
 
-  // Initial check once DOM is available
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', checkElements, { once: true });
   } else {
@@ -105,9 +97,6 @@ export function startNativeMenuWatcher(onNativeMenuDetected) {
   }
 }
 
-/**
- * Stop watching DOM
- */
 export function stopNativeMenuWatcher() {
   if (hiderObserver) {
     hiderObserver.disconnect();
@@ -115,15 +104,8 @@ export function stopNativeMenuWatcher() {
   }
 }
 
-/**
- * Toggle hiding state
- * @param {boolean} active 
- */
 export function setHidingActive(active) {
   isHiding = active;
-  if (active) {
-    injectHiderStyle();
-  } else {
-    removeHiderStyle();
-  }
+  if (active) injectHiderStyle();
+  else removeHiderStyle();
 }

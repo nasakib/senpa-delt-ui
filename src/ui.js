@@ -3,29 +3,28 @@
  * 
  * Faithfully matches the provided UI layout:
  * - Top icon bar (Home, Profile, Settings, Colors, Controls, Audio, Close)
- * - Central Orbital Skin Carousel (large active circle + rotating orbital thumbnails)
+ * - Central Orbital Skin Carousel (large active circle + 12 orbiting mini skin bubbles)
+ * - Built-in guaranteed SVG skin illustrations
  * - Direct custom skin URL input with live preview & native sync
  * - Tag + Nickname input + Color box
  * - Region & Mode dropdowns
- * - Wide prominent PLAY button
+ * - Wide prominent PLAY button (with native button alignment to bypass anti-tamper redirect)
  * - SPECTATE & SPECTATE #1 buttons
  * - Party & WebSocket server join rows
- * - Full settings: Enemy skins toggle, custom fonts, muted players, and native settings launcher
  */
 
 import { SELECTORS, queryElement } from './selectors.js';
-import { AVAILABLE_FONTS, DEFAULT_PRESET_SKINS } from './storage.js';
+import { AVAILABLE_FONTS } from './storage.js';
+import { DEFAULT_ORBITAL_SKINS } from './skinPresets.js';
 import { ACCENT_PRESETS, MENU_BG_PRESETS, openNativeSenpaSettings } from './settings.js';
 import { getMutedPlayers, unmutePlayer } from './chat.js';
 import { setNativeActiveSkin, getNativeActiveSkin } from './skins.js';
 import { spectateTopPlayer } from './leaderboard.js';
+import { alignNativeButtons, hideNativeButtons } from './bridge.js';
 
 let activeSkinIndex = 0;
 let isSkinVisible = true;
 
-/**
- * Creates and injects the complete custom menu
- */
 export function createDeltMenu({
   settings,
   onNicknameChange,
@@ -40,9 +39,11 @@ export function createDeltMenu({
   let existing = document.getElementById(SELECTORS.modOverlayId);
   if (existing) existing.remove();
 
-  const initialSkin = settings.activeSkinUrl || getNativeActiveSkin() || DEFAULT_PRESET_SKINS[0];
-  const skinList = settings.recentSkins && settings.recentSkins.length ? settings.recentSkins : DEFAULT_PRESET_SKINS;
-  activeSkinIndex = Math.max(0, skinList.indexOf(initialSkin));
+  // Combine default preset skins with any custom recent skins
+  const skinPresets = DEFAULT_ORBITAL_SKINS;
+  const initialSkin = settings.activeSkinUrl || getNativeActiveSkin() || skinPresets[0].url;
+
+  activeSkinIndex = skinPresets.findIndex(s => s.url === initialSkin);
   if (activeSkinIndex === -1) activeSkinIndex = 0;
 
   const container = document.createElement('div');
@@ -88,17 +89,17 @@ export function createDeltMenu({
             <i class="fas fa-eye"></i>
           </button>
 
-          <!-- Orbital Ring of Mini Thumbnails -->
+          <!-- Orbital Ring of 12 Mini Skin Bubbles -->
           <div class="delt-orbital-ring" id="delt-orbital-ring">
-            ${skinList.map((url, idx) => `
+            ${skinPresets.map((skin, idx) => `
               <div 
                 class="delt-orbit-thumb ${idx === activeSkinIndex ? 'active' : ''}" 
                 data-idx="${idx}" 
-                data-url="${escapeHtml(url)}" 
-                style="--orbit-angle: ${(idx / skinList.length) * 360}deg"
-                title="Select Skin ${idx + 1}"
+                data-url="${escapeHtml(skin.url)}" 
+                style="--orbit-angle: ${(idx / skinPresets.length) * 360}deg"
+                title="${skin.name}"
               >
-                <img src="${escapeHtml(url)}" alt="Skin ${idx + 1}" />
+                <img src="${escapeHtml(skin.url)}" alt="${skin.name}" />
               </div>
             `).join('')}
           </div>
@@ -149,8 +150,8 @@ export function createDeltMenu({
             type="url" 
             id="delt-skin-url-input" 
             class="delt-input delt-url-box" 
-            placeholder="Custom Skin URL (https://i.imgur.com/...)" 
-            value="${escapeHtml(initialSkin)}" 
+            placeholder="Custom Skin URL (https://i.imgur.com/... or data:image/...)" 
+            value="${initialSkin.startsWith('data:') ? '' : escapeHtml(initialSkin)}" 
           />
         </div>
 
@@ -175,19 +176,19 @@ export function createDeltMenu({
           </button>
         </div>
 
-        <!-- BIG PLAY BUTTON -->
-        <button class="delt-btn-main-play" id="delt-play-btn">
+        <!-- BIG PLAY BUTTON (Target for Native #play Alignment) -->
+        <div class="delt-btn-main-play" id="delt-play-target">
           PLAY
-        </button>
+        </div>
 
         <!-- SECONDARY ACTIONS (SPECTATE & SPECTATE #1) -->
         <div class="delt-btn-row">
           <button class="delt-btn-secondary" id="delt-spectate-top-btn" title="Automatically Spectate Leaderboard #1">
             <span class="delt-gold-crown">👑</span> SPECTATE #1
           </button>
-          <button class="delt-btn-secondary" id="delt-spectate-btn" title="Spectate Free Roam">
+          <div class="delt-btn-secondary" id="delt-spectate-target" title="Spectate Free Roam">
             SPECTATE
-          </button>
+          </div>
         </div>
 
         <!-- PARTY CODE ROW -->
@@ -371,9 +372,9 @@ export function createDeltMenu({
         <!-- BLUR & OPACITY SLIDERS -->
         <div class="delt-setting-row">
           <div class="delt-setting-text">
-            <span class="delt-setting-name">Card Transparency: <span id="delt-opacity-num">${settings.menuOpacity ?? 92}%</span></span>
+            <span class="delt-setting-name">Card Transparency: <span id="delt-opacity-num">${settings.menuOpacity ?? 94}%</span></span>
           </div>
-          <input type="range" id="delt-opacity-slider" class="delt-range" min="50" max="100" value="${settings.menuOpacity ?? 92}" />
+          <input type="range" id="delt-opacity-slider" class="delt-range" min="50" max="100" value="${settings.menuOpacity ?? 94}" />
         </div>
 
         <div class="delt-setting-row">
@@ -422,13 +423,11 @@ export function createDeltMenu({
 
   (document.body || document.documentElement).appendChild(container);
 
-  // Floating Quick-Toggle Button during gameplay
   createFabToggle();
 
-  // Attach all interactive handlers
   wireMenuEvents(container, {
     settings,
-    skinList,
+    skinPresets,
     onNicknameChange,
     onTagChange,
     onSkinChange,
@@ -439,16 +438,16 @@ export function createDeltMenu({
     onSelectServer
   });
 
+  // Align native buttons over PLAY and SPECTATE targets
+  setTimeout(alignNativeButtons, 100);
+
   return container;
 }
 
-/**
- * Wire all events inside the custom menu
- */
 function wireMenuEvents(container, ctx) {
   const {
     settings,
-    skinList,
+    skinPresets,
     onNicknameChange,
     onTagChange,
     onSkinChange,
@@ -472,14 +471,17 @@ function wireMenuEvents(container, ctx) {
       item.classList.add('active');
       const targetPane = container.querySelector(`#delt-tab-${tabTarget}`);
       if (targetPane) targetPane.classList.add('active');
+
+      if (tabTarget === 'play') {
+        setTimeout(alignNativeButtons, 50);
+      } else {
+        hideNativeButtons();
+      }
     });
   });
 
-  // Close button
   const closeBtn = container.querySelector('#delt-nav-close-btn');
-  if (closeBtn) {
-    closeBtn.addEventListener('click', () => hideDeltMenu());
-  }
+  if (closeBtn) closeBtn.addEventListener('click', () => hideDeltMenu());
 
   // 2. ORBITAL SKIN CAROUSEL
   const activeSkinImg = container.querySelector('#delt-center-skin-img');
@@ -488,7 +490,9 @@ function wireMenuEvents(container, ctx) {
 
   const updateActiveSkin = (url, idx = -1) => {
     if (activeSkinImg) activeSkinImg.src = url;
-    if (skinUrlInput) skinUrlInput.value = url;
+    if (skinUrlInput) {
+      skinUrlInput.value = url.startsWith('data:') ? '' : url;
+    }
 
     orbitThumbs.forEach((thumb, i) => {
       if (i === idx || thumb.getAttribute('data-url') === url) {
@@ -498,16 +502,17 @@ function wireMenuEvents(container, ctx) {
       }
     });
 
-    // Save to native Senpa profile
+    const avatar = container.querySelector('#delt-profile-avatar');
+    if (avatar) avatar.src = url;
+
     setNativeActiveSkin(url);
-    if (typeof onSkinChange === 'function') {
-      onSkinChange(url);
-    }
+    if (typeof onSkinChange === 'function') onSkinChange(url);
   };
 
   // Thumbnail clicks
   orbitThumbs.forEach((thumb) => {
-    thumb.addEventListener('click', () => {
+    thumb.addEventListener('click', (e) => {
+      e.stopPropagation();
       const url = thumb.getAttribute('data-url');
       const idx = Number(thumb.getAttribute('data-idx'));
       activeSkinIndex = idx;
@@ -521,15 +526,15 @@ function wireMenuEvents(container, ctx) {
 
   if (prevBtn) {
     prevBtn.addEventListener('click', () => {
-      activeSkinIndex = (activeSkinIndex - 1 + skinList.length) % skinList.length;
-      updateActiveSkin(skinList[activeSkinIndex], activeSkinIndex);
+      activeSkinIndex = (activeSkinIndex - 1 + skinPresets.length) % skinPresets.length;
+      updateActiveSkin(skinPresets[activeSkinIndex].url, activeSkinIndex);
     });
   }
 
   if (nextBtn) {
     nextBtn.addEventListener('click', () => {
-      activeSkinIndex = (activeSkinIndex + 1) % skinList.length;
-      updateActiveSkin(skinList[activeSkinIndex], activeSkinIndex);
+      activeSkinIndex = (activeSkinIndex + 1) % skinPresets.length;
+      updateActiveSkin(skinPresets[activeSkinIndex].url, activeSkinIndex);
     });
   }
 
@@ -584,9 +589,6 @@ function wireMenuEvents(container, ctx) {
       const profileNick = container.querySelector('#delt-profile-nick-disp');
       if (profileNick) profileNick.textContent = e.target.value || 'Player';
     });
-    nickInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') onPlay();
-    });
   }
 
   if (tagInput) {
@@ -594,9 +596,6 @@ function wireMenuEvents(container, ctx) {
       onTagChange(e.target.value);
       const profileTag = container.querySelector('#delt-profile-tag-disp');
       if (profileTag) profileTag.textContent = `[${e.target.value || 'TAG'}]`;
-    });
-    tagInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') onPlay();
     });
   }
 
@@ -608,13 +607,8 @@ function wireMenuEvents(container, ctx) {
     });
   }
 
-  // 4. PLAY & SPECTATE BUTTONS
-  const playBtn = container.querySelector('#delt-play-btn');
-  const spectateBtn = container.querySelector('#delt-spectate-btn');
+  // 4. SPECTATE TOP BUTTON
   const spectateTopBtn = container.querySelector('#delt-spectate-top-btn');
-
-  if (playBtn) playBtn.addEventListener('click', () => onPlay());
-  if (spectateBtn) spectateBtn.addEventListener('click', () => onSpectate());
   if (spectateTopBtn) {
     spectateTopBtn.addEventListener('click', () => {
       hideDeltMenu();
@@ -631,20 +625,7 @@ function wireMenuEvents(container, ctx) {
     });
   }
 
-  // Party Join / Create
-  const partyInput = container.querySelector('#delt-party-input');
-  const partyJoinBtn = container.querySelector('#delt-join-party-btn');
-  if (partyJoinBtn && partyInput) {
-    partyJoinBtn.addEventListener('click', () => {
-      const code = partyInput.value.trim();
-      if (code) {
-        onSettingChange({ partyToken: code });
-        if (typeof onSelectServer === 'function') onSelectServer(code);
-      }
-    });
-  }
-
-  // 5. SETTINGS: ENEMY SKINS, FONTS, MUTED PLAYERS
+  // 5. SETTINGS TAB
   const enemySkinsToggle = container.querySelector('#delt-toggle-enemy-skins');
   if (enemySkinsToggle) {
     enemySkinsToggle.addEventListener('change', (e) => {
@@ -659,13 +640,11 @@ function wireMenuEvents(container, ctx) {
     });
   }
 
-  // Grid Controls
   const gridColor = container.querySelector('#delt-grid-color');
   const gridToggle = container.querySelector('#delt-grid-toggle');
   if (gridColor) gridColor.addEventListener('input', (e) => onSettingChange({ gridColor: e.target.value }));
   if (gridToggle) gridToggle.addEventListener('change', (e) => onSettingChange({ showGrid: e.target.checked }));
 
-  // Canvas Theme Pills
   const canvasPills = container.querySelectorAll('#delt-canvas-theme-pills .delt-pill');
   canvasPills.forEach(pill => {
     pill.addEventListener('click', () => {
@@ -675,7 +654,6 @@ function wireMenuEvents(container, ctx) {
     });
   });
 
-  // Muted Players Unmute handlers
   container.querySelectorAll('.delt-unmute-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const nick = btn.getAttribute('data-nick');
@@ -684,15 +662,12 @@ function wireMenuEvents(container, ctx) {
     });
   });
 
-  // Native Senpa Settings Modal Launcher
   const nativeSettingsBtn = container.querySelector('#delt-open-native-settings-btn');
   if (nativeSettingsBtn) {
-    nativeSettingsBtn.addEventListener('click', () => {
-      openNativeSenpaSettings();
-    });
+    nativeSettingsBtn.addEventListener('click', () => openNativeSenpaSettings());
   }
 
-  // 6. THEME TAB CONTROLS (Menu BG & Accent Color)
+  // 6. THEME TAB
   const bgSwatches = container.querySelectorAll('#delt-menu-bg-swatches .delt-color-pill');
   const customBgInput = container.querySelector('#delt-custom-bg-input');
 
@@ -735,7 +710,6 @@ function wireMenuEvents(container, ctx) {
     });
   }
 
-  // Opacity & Blur Sliders
   const opSlider = container.querySelector('#delt-opacity-slider');
   const opNum = container.querySelector('#delt-opacity-num');
   if (opSlider) {
@@ -754,13 +728,8 @@ function wireMenuEvents(container, ctx) {
     });
   }
 
-  // Reset Theme Button
   const resetThemeBtn = container.querySelector('#delt-reset-theme-btn');
-  if (resetThemeBtn) {
-    resetThemeBtn.addEventListener('click', () => {
-      onResetSettings();
-    });
-  }
+  if (resetThemeBtn) resetThemeBtn.addEventListener('click', () => onResetSettings());
 }
 
 function createFabToggle() {
@@ -784,6 +753,8 @@ export function showDeltMenu() {
     container.style.display = 'flex';
   }
   if (fab) fab.style.display = 'none';
+
+  setTimeout(alignNativeButtons, 50);
 }
 
 export function hideDeltMenu() {
@@ -794,6 +765,8 @@ export function hideDeltMenu() {
     container.style.display = 'none';
   }
   if (fab) fab.style.display = 'flex';
+
+  hideNativeButtons();
 
   const canvas = queryElement(SELECTORS.nativeCanvas);
   if (canvas) canvas.focus();
