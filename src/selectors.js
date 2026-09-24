@@ -1,22 +1,32 @@
 /**
  * Centralized DOM Selectors for Senpa.io
  * 
- * Edit or add selectors here after inspecting Senpa.io with DevTools.
- * Fallbacks are provided in case class hashes or element structures change.
+ * Integrated with official client definitions for ad blockers and UI wrappers.
  */
 
 export const SELECTORS = {
-  // Container of native main menu
+  // Elements to hide from DOM (banners, ads, native menu chrome)
   nativeMenuContainers: [
-    '#menu',
-    '.main-menu',
-    '.menu-area',
     '#bottomBar',
     '#gameadsbanner-container',
+    '#gameadsbanner',
+    '#banner_ad_bottom',
+    '#ad-slot-center-panel',
+    '#onesignal-slidedown-container',
+    '.adsbygoogle',
+    '.advertisement-informer',
+    '.advertisement-informer-endgame',
     '.quick-panel',
     '.account-panel',
     '.social-panel',
-    '.support-panel'
+    '.support-panel',
+    '.server-panel',
+    '#primary-inputs',
+    '#settings-btn',
+    '.info-footer',
+    '.main-menu > .logo',
+    '.Home_playContainer__1bzNp',
+    '.Home_appsContainer__14QHs'
   ],
 
   // Specific native menu root
@@ -86,33 +96,19 @@ export const SELECTORS = {
   modGridOverlayId: 'delt-grid-overlay'
 };
 
-/**
- * Helper to query the first matching element from a selector string or array of fallbacks
- * @param {string|string[]} selector 
- * @param {ParentNode} [root=document] 
- * @returns {HTMLElement|null}
- */
 export function queryElement(selector, root = document) {
   if (Array.isArray(selector)) {
     for (const sel of selector) {
       try {
         const el = root.querySelector(sel);
         if (el) return el;
-      } catch (e) {
-        // Ignore pseudo-selectors that might not be supported in older engines
-      }
+      } catch (e) {}
     }
     return null;
   }
   return root.querySelector(selector);
 }
 
-/**
- * Helper to query all matching elements from a selector string or array of fallbacks
- * @param {string|string[]} selector 
- * @param {ParentNode} [root=document] 
- * @returns {HTMLElement[]}
- */
 export function queryElements(selector, root = document) {
   if (Array.isArray(selector)) {
     const found = new Set();
@@ -120,9 +116,7 @@ export function queryElements(selector, root = document) {
       try {
         const nodes = root.querySelectorAll(sel);
         nodes.forEach(node => found.add(node));
-      } catch (e) {
-        // Ignore invalid selectors
-      }
+      } catch (e) {}
     }
     return Array.from(found);
   }
